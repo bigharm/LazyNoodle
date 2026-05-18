@@ -5,10 +5,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
+import sys
 
-from .config import APP_HOST, APP_PORT, APP_DEBUG
-from .routes import register_routes
-from .routes.system import mount_static_files
+from backend.config import APP_HOST, APP_PORT, APP_DEBUG
+from backend.routes import register_routes
+from backend.routes.system import mount_static_files
 
 # 创建 FastAPI 应用
 app = FastAPI(title="互动叙事系统 API", version="4.0")
@@ -29,15 +30,24 @@ register_routes(app)
 mount_static_files(app)
 
 # 添加根路径处理
-BASE_DIR = Path(__file__).parent.parent
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).parent
+    print(f"打包模式，程序目录: {BASE_DIR}")
+else:
+    BASE_DIR = Path(__file__).parent.parent
+    print(f"开发模式，程序目录: {BASE_DIR}")
+
 
 @app.get("/")
 async def serve_index():
     """服务首页"""
     index_path = BASE_DIR / "index.html"
+    print(f"查找 index.html 路径: {index_path}")
+    print(f"文件是否存在: {index_path.exists()}")
+    
     if index_path.exists():
         return FileResponse(str(index_path))
-    return {"message": "Interactive Novel API is running"}
+    return {"message": "LazyNoodle API is running"}
 
 
 # ========== 启动配置 ==========

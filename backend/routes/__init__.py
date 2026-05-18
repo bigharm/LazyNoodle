@@ -2,11 +2,11 @@
 # 路由模块
 
 from fastapi import FastAPI
-from .world import router as world_router
-from .ghost import router as ghost_router
-from .character import router as character_router
-from .location import router as location_router
-from .system import router as system_router
+from backend.routes.world import router as world_router
+from backend.routes.ghost import router as ghost_router
+from backend.routes.character import router as character_router
+from backend.routes.location import router as location_router
+from backend.routes.system import router as system_router
 
 
 def register_routes(app: FastAPI):

@@ -4,7 +4,7 @@
 import json
 import re
 from openai import OpenAI
-from ..config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEFAULT_TEMPERATURE
+from backend.config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEFAULT_TEMPERATURE
 
 
 def clean_json_response(response: str) -> str:

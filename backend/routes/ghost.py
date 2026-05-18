@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 
-from ..world_manager import (
+from backend.world_manager import (
     get_current_world_path,
     get_locations_dir,
     get_world_worldview,
@@ -17,10 +17,10 @@ from ..world_manager import (
     load_tasks,
     save_tasks
 )
-from ..location_manager import get_location_manager
-from ..services.ai_service import call_ai, clean_json_response, call_ai_json
-from ..services.relationship_service import update_relationships, get_current_relationships
-from ..config import PROMPTS_DIR,DEBUG
+from backend.location_manager import get_location_manager
+from backend.services.ai_service import call_ai, clean_json_response, call_ai_json
+from backend.services.relationship_service import update_relationships, get_current_relationships
+from backend.config import PROMPTS_DIR,DEBUG
 
 router = APIRouter()
 
@@ -468,7 +468,7 @@ async def npc_dialogue(request: NPCDialogueRequest):
     worldview = get_world_worldview()
     
     # 获取 NPC 数据
-    from ..world_manager import get_npcs_dir
+    from backend.world_manager import get_npcs_dir
     npc_index_path = get_npcs_dir() / "npc_index.json"
     npc_data = None
     if npc_index_path.exists():
@@ -712,7 +712,7 @@ async def system_helper(request: SystemHelperRequest):
     
     npcs_data = request.extra_context.get("npcs") if request.extra_context else None
     if not npcs_data:
-        from ..world_manager import get_npcs_dir
+        from backend.world_manager import get_npcs_dir
         npc_index_path = get_npcs_dir() / "npc_index.json"
         if npc_index_path.exists():
             with open(npc_index_path, 'r', encoding='utf-8') as f:
@@ -919,7 +919,7 @@ async def test_ai():
 @router.get("/tasks")
 async def get_tasks(character_id: str):
     """获取角色的任务数据"""
-    from ..world_manager import load_tasks
+    from backend.world_manager import load_tasks
     
     tasks_data = load_tasks(character_id)
     return {
@@ -930,7 +930,7 @@ async def get_tasks(character_id: str):
 @router.post("/add_task")
 async def add_task(request: dict):
     """添加新任务（玩家确认后）"""
-    from ..world_manager import load_tasks, save_tasks
+    from backend.world_manager import load_tasks, save_tasks
     from datetime import datetime
     
     character_id = request.get("character_id")
@@ -988,7 +988,7 @@ async def observe_npc(request: dict):
     worldview = get_world_worldview()
     
     # 获取NPC信息
-    from ..world_manager import get_npcs_dir
+    from backend.world_manager import get_npcs_dir
     npc_index_path = get_npcs_dir() / "npc_index.json"
     npc_info = ""
     if npc_index_path.exists():
@@ -1030,7 +1030,7 @@ async def observe_npc(request: dict):
 @router.post("/delete_task")
 async def delete_task(request: dict):
     """删除任务（移动到 removed_tasks）"""
-    from ..world_manager import load_tasks, save_tasks
+    from backend.world_manager import load_tasks, save_tasks
     from datetime import datetime
     
     character_id = request.get("character_id")
@@ -1066,7 +1066,7 @@ async def delete_task(request: dict):
 async def test_ai_with_key(request: dict):
     """使用用户提供的 API Key 测试连接"""
     from openai import OpenAI
-    from ..config import DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
+    from backend.config import DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
     
     api_key = request.get("api_key")
     if not api_key:

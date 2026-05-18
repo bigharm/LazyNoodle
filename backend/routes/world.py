@@ -4,7 +4,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..world_manager import (
+from backend.world_manager import (
     get_current_world,
     get_current_world_path,
     get_world_index,
@@ -15,8 +15,8 @@ from ..world_manager import (
     set_current_world,
     save_world_index
 )
-from ..world_generator import generate_world_data
-from ..config import BASE_DIR
+from backend.world_generator import generate_world_data
+from backend.config import BASE_DIR
 
 router = APIRouter()
 
@@ -65,7 +65,7 @@ async def get_world_status():
     world_id = get_current_world()
     initialized = is_world_initialized()
     
-    from ..world_manager import get_locations_dir, get_npcs_dir
+    from backend.world_manager import get_locations_dir, get_npcs_dir
     
     locations_dir = get_locations_dir()
     npcs_dir = get_npcs_dir()
@@ -106,7 +106,7 @@ async def initialize_world():
         traceback.print_exc()
         
         # Fallback 到默认数据
-        from ..world_manager import get_default_locations, get_default_npcs, get_default_timeline, get_locations_dir, get_npcs_dir
+        from backend.world_manager import get_default_locations, get_default_npcs, get_default_timeline, get_locations_dir, get_npcs_dir
         import json
         
         locations_dir = get_locations_dir()
@@ -177,7 +177,7 @@ async def delete_world(request: dict):
     """删除世界（移动到 _deleted 文件夹）"""
     import shutil
     from datetime import datetime
-    from ..world_manager import get_world_index, save_world_index, get_world_path, get_current_world, set_current_world
+    from backend.world_manager import get_world_index, save_world_index, get_world_path, get_current_world, set_current_world
     
     world_id = request.get("world_id")
     if not world_id:
@@ -228,7 +228,7 @@ async def delete_world(request: dict):
 @router.post("/world/scan")
 async def scan_worlds():
     """扫描 worlds 目录，同步到索引"""
-    from ..world_manager import get_world_index, save_world_index, get_worlds_dir, register_world
+    from backend.world_manager import get_world_index, save_world_index, get_worlds_dir, register_world
     
     worlds_dir = get_worlds_dir()
     index = get_world_index()
@@ -286,7 +286,7 @@ async def create_world_with_worldview(request: dict):
     if world_path.exists():
         raise HTTPException(status_code=400, detail=f"世界 {world_id} 已存在")
     
-    from ..world_manager import register_world, set_current_world
+    from backend.world_manager import register_world, set_current_world
     register_world(world_id, world_name, description)
     
     world_path.mkdir(parents=True, exist_ok=True)

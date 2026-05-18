@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from ..config import BASE_DIR
+from backend.config import BASE_DIR
 
 router = APIRouter()
 

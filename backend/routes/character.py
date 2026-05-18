@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Any
 
-from ..world_manager import (
+from backend.world_manager import (
     get_current_world,
     get_characters_dir,
     ensure_character_fields,
@@ -18,8 +18,8 @@ from ..world_manager import (
     get_all_characters,
     get_locations_dir
 )
-from ..services.ai_service import call_ai, clean_json_response
-from ..config import PROMPTS_DIR
+from backend.services.ai_service import call_ai, clean_json_response
+from backend.config import PROMPTS_DIR
 
 router = APIRouter()
 
@@ -57,7 +57,7 @@ def load_prompt(prompt_name: str) -> str:
 
 def load_world_setting() -> str:
     """加载当前世界的世界观设定"""
-    from ..world_manager import get_world_worldview
+    from backend.world_manager import get_world_worldview
     return get_world_worldview()
 
 
@@ -238,7 +238,7 @@ async def delete_character(request: dict):
 @router.post("/delete_history")
 async def delete_history(request: DeleteHistoryRequest):
     """从指定索引删除对话历史，并回滚关系状态"""
-    from ..services.relationship_service import rollback_relationships_to_hour
+    from backend.services.relationship_service import rollback_relationships_to_hour
     
     character = load_character(request.character_id)
     if not character:
@@ -346,7 +346,7 @@ async def convert_to_npc(request: dict):
         # 降级：使用角色当前场景
         status = character.get("status", {})
         current_scene = status.get("current_scene", "未知")
-        from ..location_manager import get_location_manager
+        from backend.location_manager import get_location_manager
         lm = get_location_manager(get_locations_dir())
         location = lm.get_location_by_name(current_scene)
         final_location_id = location.id if location and hasattr(location, 'id') else current_scene
@@ -373,7 +373,7 @@ async def convert_to_npc(request: dict):
     }
     
     # 加载并保存 NPC 索引
-    from ..world_manager import get_npcs_dir
+    from backend.world_manager import get_npcs_dir
     npc_index_path = get_npcs_dir() / "npc_index.json"
     
     npc_index = {}
@@ -413,7 +413,7 @@ async def add_npc(request: dict):
     if not npc_data:
         raise HTTPException(status_code=400, detail="需要提供 npc 数据")
     
-    from ..world_manager import get_npcs_dir
+    from backend.world_manager import get_npcs_dir
     npc_index_path = get_npcs_dir() / "npc_index.json"
     
     npc_index = {}
@@ -440,7 +440,7 @@ async def add_npc(request: dict):
 @router.get("/npcs/all")
 async def get_all_npcs():
     """获取所有 NPC"""
-    from ..world_manager import get_npcs_dir
+    from backend.world_manager import get_npcs_dir
     npc_index_path = get_npcs_dir() / "npc_index.json"
     
     npc_index = {}

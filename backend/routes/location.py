@@ -2,8 +2,8 @@
 # 地点管理相关路由
 
 from fastapi import APIRouter, HTTPException
-from ..world_manager import get_locations_dir, get_current_world_path
-from ..location_manager import get_location_manager
+from backend.world_manager import get_locations_dir, get_current_world_path
+from backend.location_manager import get_location_manager
 
 router = APIRouter()
 
@@ -11,7 +11,7 @@ router = APIRouter()
 @router.get("/locations/tree")  # 移除 /ghost 前缀
 async def get_locations_tree(character_id: str, chapter_index: int = 1):
     """获取玩家已解锁地点树"""
-    from ..routes.character import load_character
+    from backend.routes.character import load_character
     
     character = load_character(character_id)
     unlocked_locations = character.get("unlocked_locations", {}) if character else {}
@@ -173,7 +173,7 @@ async def get_npcs_by_scene(scene_name: str):
     location = lm.get_location_by_name(scene_name)
     location_id = location.id if location and hasattr(location, 'id') else scene_name
     
-    from ..world_manager import get_npcs_dir
+    from backend.world_manager import get_npcs_dir
     import json
     
     npc_index_path = get_npcs_dir() / "npc_index.json"
@@ -193,7 +193,7 @@ async def get_npcs_by_scene(scene_name: str):
 @router.post("/update_scene")  # 移除 /ghost 前缀
 async def update_scene(request: dict):
     """更新角色场景"""
-    from ..routes.character import load_character, save_character
+    from backend.routes.character import load_character, save_character
     from datetime import datetime
     
     character_id = request.get("character_id")

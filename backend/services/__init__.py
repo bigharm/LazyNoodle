@@ -1,8 +1,8 @@
 # backend/services/__init__.py
 # 服务层模块
 
-from .ai_service import AIService, ai_service, call_ai, call_ai_json, clean_json_response
-from .relationship_service import (
+from backend.services.ai_service import AIService, ai_service, call_ai, call_ai_json, clean_json_response
+from backend.services.relationship_service import (
     get_current_relationships,
     update_relationships,
     rollback_relationships_to_hour

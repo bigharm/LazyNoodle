@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Dict, Optional
 
-from .world_manager import (
+from backend.world_manager import (
     get_current_world_path,
     get_world_worldview,
     get_locations_dir,
@@ -15,8 +15,8 @@ from .world_manager import (
     get_default_npcs,
     get_default_timeline
 )
-from .config import PROMPTS_DIR
-from .services.ai_service import call_ai, clean_json_response
+from backend.config import PROMPTS_DIR
+from backend.services.ai_service import call_ai, clean_json_response
 
 
 def _load_prompt(prompt_name: str) -> str:
