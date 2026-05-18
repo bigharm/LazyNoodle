@@ -1,0 +1,28 @@
+LazyNoodle 懒得面 - 使用说明
+
+1. 首次使用
+   - 双击 "启动LazyNoodle.bat"
+   - 如果提示缺少 API Key，请将 .env.example 复制为 .env
+   - 用记事本打开 .env，将 your-api-key-here 替换为你的 DeepSeek API Key
+   - 保存后重新双击 "启动LazyNoodle.bat"
+
+2. 获取 API Key
+   - 访问 https://platform.deepseek.com
+   - 注册账号，在控制台获取 API Key
+
+3. 重要提示
+   - 使用 DeepSeek API 时，请关闭代理/VPN
+   - 首次启动较慢（约10-20秒），请耐心等待
+   - 如果浏览器没有自动打开，请手动访问 http://127.0.0.1:8000
+
+4. 停止服务
+   - 双击 "停止服务.bat" 即可
+
+5. 常见问题
+   Q: 启动后提示端口被占用
+   A: 先运行"停止服务.bat"，再重新启动
+
+   Q: AI 没有回应
+   A: 检查网络是否正常，确认已关闭代理，检查 API Key 是否正确
+
+有问题请访问: https://github.com/bigharm/LazyNoodle
