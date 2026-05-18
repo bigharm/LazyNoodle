@@ -1,0 +1,126 @@
+项目当前状态总结（截至 2026-05-16）
+一、项目概述
+项目名称：互动叙事系统 / 视觉小说阅读器
+当前版本：v4.0（多世界支持，AI 驱动）
+核心定位：AI 驱动的文字角色扮演游戏，玩家通过创建角色在 AI 生成的世界中自由探索和互动。
+
+二、技术架构
+层级	技术
+前端	HTML5/CSS3/JavaScript (原生 ES6+)
+后端	FastAPI (Python 3.10+)
+AI 集成	DeepSeek API (deepseek-v4-flash)
+数据存储	JSON + localStorage + 世界目录结构
+三、目录结构
+text
+novel/
+├── worlds/                    # 世界数据根目录
+│   ├── worlds_index.json      # 世界索引
+│   ├── default/               # 默认世界
+│   │   ├── worldview.txt      # 世界观设定
+│   │   ├── locations/         # 地点数据
+│   │   ├── npcs/              # NPC 索引
+│   │   ├── timeline.json      # 时间线
+│   │   └── sessions/characters/ # 角色存档
+│   └── _deleted/              # 已删除世界
+├── prompts/                   # AI prompt 模板
+├── js/                        # 前端代码
+├── css/                       # 样式
+├── backend/                   # 后端代码
+└── index.html
+四、核心功能完成状态
+✅ 已完成
+模块	功能
+多世界系统	创建、选择、切换、删除、扫描世界
+世界初始化	AI 根据 worldview.txt 生成地点、NPC、时间线
+角色系统	创建、选择、删除、导出为 PNG、导入（PNG/JSON）
+幽灵模式	动作+语言交互，AI 生成回应
+NPC 系统	观察、对话、继续、结束、强制退出
+系统助手	查看状态、获取提示、自定义提问、独立历史
+时间系统	AI 驱动时间流逝、精力状态、时间显示
+地点系统	解锁、树形显示、场景切换
+关系系统	AI 返回态度更新，按时间戳存储历史（20 条），删除历史时自动回滚
+主线兼容	阅读模式保留入口，默认幽灵模式
+🚧 待开发（T3）
+优先级	任务
+高	任务系统（AI 生成任务、持久化、进度追踪）
+中	设置界面（AI 参数调节）
+低	多周目继承
+五、关键数据结构
+角色 JSON 结构
+json
+{
+  "character_id": "uuid",
+  "world_id": "default",
+  "profile": { "name", "identity", "appearance", "personality", "background" },
+  "status": { "is_dead", "current_scene", "health" },
+  "time": { "current_day", "current_hour", "energy_state", "chapter_time_remaining" },
+  "conversation_history": [{ "speaker", "content", "game_hour", "timestamp" }],
+  "relationships_history": [{ "hour": 8.5, "content": "斯内普:警惕,哈利:友好" }],
+  "unlocked_locations": {},
+  "system_helper_history": [],
+  "resources": { "灵石": 0, "药材": [], "道具": [] },
+  "active_tasks": [],
+  "completed_tasks": []
+}
+NPC 索引结构
+json
+{
+  "npcs": [{ "id": "npc_xxx", "name": "名称", "profile": {}, "location_id": "xxx" }],
+  "generated_chapters": []
+}
+六、AI Prompt 模板
+文件	用途
+init_npc_pool.txt	初始化 NPC
+validate_character.txt	验证/生成角色
+environment_interact.txt	环境交互（支持关系更新）
+npc_dialogue.txt	NPC 对话（支持关系更新和强制退出）
+system_helper.txt	系统助手
+generate_locations.txt	生成地点
+generate_npcs.txt	生成 NPC
+generate_timeline.txt	生成时间线
+七、API 端点（核心）
+端点	功能
+/api/worlds/list	获取世界列表
+/api/world/select	选择世界
+/api/world/init	初始化世界
+/api/world/delete	删除世界（移动到 _deleted）
+/api/world/scan	扫描并同步世界目录
+/api/ghost/create_character	创建角色
+/api/ghost/load_character	加载角色
+/api/ghost/list_characters	角色列表
+/api/ghost/environment_interact	环境交互
+/api/ghost/npc_dialogue	NPC 对话
+/api/ghost/system_helper	系统助手
+/api/ghost/delete_history	删除历史（同时回滚关系）
+/api/ghost/export_character/{id}	导出角色（PNG）
+/api/ghost/import_character	导入角色
+/api/ghost/convert_to_npc	角色转 NPC
+/api/ghost/locations/all	获取所有地点
+/api/ghost/locations/tree	获取地点树
+八、启动方式
+bash
+cd novel
+python -m backend.api
+# 访问 http://localhost:8000
+九、近期完成的优化
+关系系统：AI 返回态度更新，按游戏时间存储历史（20 条），删除历史时自动回滚
+
+NPC 对话强制退出：事态严重时 AI 返回 exit_dialogue: true
+
+角色导出 PNG：角色数据嵌入 tEXt 块
+
+角色导入：从 PNG/JSON 读取，AI 解析创建
+
+世界扫描：自动同步 worlds/ 目录到索引
+
+删除世界：移动到 _deleted 文件夹而非永久删除
+
+十、下一步计划
+任务系统（T3）：AI 生成任务、持久化存储、进度追踪、UI 面板
+
+设置界面：AI 参数调节（temperature 等）
+
+多周目继承：保留部分进度到新游戏
+
+文档更新日期：2026-05-16
+版本：v4.0
