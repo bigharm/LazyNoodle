@@ -1,0 +1,28 @@
+# backend/routes/__init__.py
+# 路由模块
+
+from fastapi import FastAPI
+from .world import router as world_router
+from .ghost import router as ghost_router
+from .character import router as character_router
+from .location import router as location_router
+from .system import router as system_router
+
+
+def register_routes(app: FastAPI):
+    """注册所有路由"""
+    app.include_router(world_router, prefix="/api", tags=["world"])
+    app.include_router(ghost_router, prefix="/api/ghost", tags=["ghost"])
+    app.include_router(character_router, prefix="/api/ghost", tags=["character"])
+    app.include_router(location_router, prefix="/api/ghost", tags=["location"])
+    app.include_router(system_router, prefix="/api", tags=["system"])
+
+
+__all__ = [
+    'register_routes',
+    'world_router',
+    'ghost_router',
+    'character_router',
+    'location_router',
+    'system_router'
+]

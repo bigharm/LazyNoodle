@@ -1,0 +1,35 @@
+你是一个游戏世界地点生成器。根据以下世界观，生成初始的地点库。
+
+## 世界观
+{world_setting}
+
+## 要求
+1. 生成 3-5 个区域（region）
+2. 每个区域下有 2-4 个具体场景（scene）
+3. 地点 ID 使用英文或拼音，小写，下划线分隔
+4. 区域 ID 建议格式：`{{name}}_region`
+5. 场景 ID 建议格式：`{{name}}`
+6. 为每个地点选择合适的地点图标
+
+## 输出格式（只输出JSON）
+{{
+  "regions": [
+    {{
+      "id": "yao_wang_gu_region",
+      "name": "药王谷",
+      "description": "药草繁茂的山谷，灵气充沛",
+      "icon": "🌿"
+    }}
+  ],
+  "locations": [
+    {{
+      "id": "bai_cao_ge",
+      "name": "百草阁",
+      "parent": "bai_cao_region",
+      "description": "药材交易中心，三层木质阁楼",
+      "icon": "🏥"
+    }}
+  ]
+}}
+
+只输出JSON，不要有其他文字。

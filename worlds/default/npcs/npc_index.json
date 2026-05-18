@@ -1,0 +1,177 @@
+{
+  "npcs": [
+    {
+      "id": "npc_bai_cao_ge_1",
+      "name": "赵铁秤",
+      "gender": "男",
+      "profile": {
+        "identity": "百草阁执事",
+        "description": "五十多岁，面容清癯，不苟言笑，双手布满药材留下的茧痕",
+        "personality_traits": [
+          "严苛",
+          "务实",
+          "外冷内热"
+        ],
+        "background": "在百草阁工作三十年，对药材了如指掌，因年轻时曾被假药坑害，对药材品质要求极为严格"
+      },
+      "location_id": "bai_cao_ge",
+      "active": true,
+      "dead": false
+    },
+    {
+      "id": "npc_huan_yi_lou_1",
+      "name": "霓裳仙子",
+      "gender": "女",
+      "profile": {
+        "identity": "幻衣楼楼主",
+        "description": "三十出头模样，容颜绝美，身着流光溢彩的法袍，眼波流转间自带魅惑",
+        "personality_traits": [
+          "精明",
+          "神秘",
+          "重情义"
+        ],
+        "background": "筑基初期修士，早年受过重伤导致修为停滞，转而钻研法袍炼制。暗中收养了凡人女孩陈鱼鱼为孙女，对低阶弟子多有照拂"
+      },
+      "location_id": "huan_yi_lou",
+      "active": true,
+      "dead": false
+    },
+    {
+      "id": "npc_fei_he_yi_zhan_1",
+      "name": "鹤老翁",
+      "gender": "男",
+      "profile": {
+        "identity": "飞鹤驿站管事",
+        "description": "白发苍苍，驼背弯腰，总是用慈祥的眼神看着仙鹤们",
+        "personality_traits": [
+          "慈祥",
+          "细心",
+          "固执"
+        ],
+        "background": "年轻时曾是万兽谷弟子，因契约仙鹤受伤导致修为尽废，后主动申请来驿站照料仙鹤，与仙鹤感情深厚"
+      },
+      "location_id": "fei_he_yi_zhan",
+      "active": true,
+      "dead": false
+    },
+    {
+      "id": "npc_zui_xian_ju_1",
+      "name": "柳大厨",
+      "gender": "男",
+      "profile": {
+        "identity": "醉仙居老板兼主厨",
+        "description": "四十多岁，身材圆润，满脸油光，系着一条永远洗不干净的围裙",
+        "personality_traits": [
+          "豪爽",
+          "爱冒险",
+          "贪吃"
+        ],
+        "background": "灵厨大赛冠军，曾是散修，因一次炼丹意外炸毁洞府后改行做灵厨。招牌菜“劫雷风干肉”源于他渡劫失败被雷劈后的灵感"
+      },
+      "location_id": "zui_xian_ju",
+      "active": true,
+      "dead": false
+    },
+    {
+      "id": "npc_qing_teng_lu_1",
+      "name": "苏行",
+      "gender": "男",
+      "profile": {
+        "identity": "药王谷黄组弟子",
+        "description": "十六岁少年，身形瘦削，眼神坚毅，右臂缠绕着布带遮掩星海蛸胎记",
+        "personality_traits": [
+          "坚韧",
+          "谨慎",
+          "重情义"
+        ],
+        "background": "来自凡人世界的采药人，被接引入修仙界仅半年。拥有星海蛸秘密，可通过触碰吸收他人灵力，具备灵视能力。因出身低微处处受欺，但凭借采药技能和星海蛸逐渐崭露头角"
+      },
+      "location_id": "qing_teng_lu",
+      "active": true,
+      "dead": false
+    },
+    {
+      "id": "npc_shan_tang_1",
+      "name": "陈鱼鱼",
+      "gender": "女",
+      "profile": {
+        "identity": "药王谷黄组弟子",
+        "description": "十四岁少女，圆脸大眼，梳着双丫髻，笑容甜美透着机灵",
+        "personality_traits": [
+          "活泼",
+          "聪慧",
+          "仗义"
+        ],
+        "background": "凡人世界孤儿，被霓裳仙子暗中收养为孙女，但对外保密。与苏行情同兄妹，擅长察言观色，在药王谷人缘极好。炼气二层修为"
+      },
+      "location_id": "shan_tang",
+      "active": true,
+      "dead": false
+    },
+    {
+      "id": "npc_chu_xuan_shi_yan_shi_1",
+      "name": "楚悬",
+      "gender": "男",
+      "profile": {
+        "identity": "万兽谷研究院执事",
+        "description": "四十多岁，头发乱如鸟巢，眼神时而清明时而疯狂，身上散发着药水和血腥的混合气味",
+        "personality_traits": [
+          "偏执",
+          "天才",
+          "疯癫"
+        ],
+        "background": "血河宗楚江月后人，筑基中期修为。因家族内乱流落万兽谷，痴迷于失传的御妖诀研究，为此不惜用自己做实验导致半疯。是虞红衣的表叔，对血河宗怀有复杂情感"
+      },
+      "location_id": "chu_xuan_shi_yan_shi",
+      "active": true,
+      "dead": false
+    },
+    {
+      "id": "npc_he_she_1",
+      "name": "虞红衣",
+      "gender": "女",
+      "profile": {
+        "identity": "万兽谷练气弟子",
+        "description": "十八岁少女，红衣如火，眉宇间带着英气，左耳戴着一枚灵兽骨耳环",
+        "personality_traits": [
+          "热情",
+          "直率",
+          "善良"
+        ],
+        "background": "父辈是血河宗流落在外的落魄修士，自幼在万兽谷长大。拥有灵兽亲和体质，能轻易获得灵兽信任。目前负责鹤舍饲养，对楚悬的研究既好奇又担忧"
+      },
+      "location_id": "he_she",
+      "active": true,
+      "dead": false
+    },
+    {
+      "id": "npc_imported_1778852035849_咕噜",
+      "name": "咕噜",
+      "gender": "未知",
+      "profile": {
+        "identity": "无主灵兽 性别未知",
+        "description": "外貌：外表年龄不定，平时呈现拳头大小的半透明胶质球体，散发柔和的青绿色荧光。可随意塑形模拟成任何小动物或器物，但变身后仍保持柔软果冻般的触感，偶尔会因不熟练而露出破绽。\n性格：好奇心极强，喜欢模仿和恶作剧，对人类行为充满新奇感，因缺乏人类道德观念常惹出麻烦，但纯真无恶意。",
+        "personality_traits": [
+          "好奇心极强",
+          "喜欢模仿和恶作剧",
+          "对人类行为充满新奇感",
+          "因缺乏人类道德观念常惹出麻烦",
+          "但纯真无恶意。"
+        ],
+        "background": "原是药王谷灵脉深处一块天然化形石，因吸纳万年灵气和一滴上古灵液意外产生灵智。意识混沌时被一只路过的野狐叼走丢弃在醉仙居后院，受烟火气和酒香熏陶逐渐稳定形态，从此赖在醉仙居不走，成为店中常客和捉弄对象。",
+        "imported_from": "external"
+      },
+      "location_id": "bai_cao_ge",
+      "active": true,
+      "dead": false
+    }
+  ],
+  "generated_chapters": [],
+  "version": "2.0",
+  "last_updated": "2026-05-15T21:33:55.853607",
+  "location_npc_map": {
+    "bai_cao_ge": [
+      "npc_imported_1778852035849_咕噜"
+    ]
+  }
+}

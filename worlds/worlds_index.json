@@ -1,0 +1,27 @@
+{
+  "worlds": [
+    {
+      "id": "default",
+      "name": "修仙世界",
+      "description": "从《苏行修仙录》提取的世界观",
+      "created_at": "2026-05-15T10:00:00",
+      "last_played": null
+    },
+    {
+      "id": "world_1778844589090",
+      "name": "酒馆",
+      "description": "存在于宇宙时空裂隙里的一个避风港，里面有来自不同世界的奇妙旅人",
+      "created_at": "2026-05-15T19:29:49.401566",
+      "last_played": null
+    },
+    {
+      "id": "hp",
+      "name": "《哈利·波特》",
+      "description": "霍格华兹魔法学院",
+      "created_at": "2026-05-16T12:01:53.496090",
+      "last_played": null
+    }
+  ],
+  "current_world": "world_1778844589090",
+  "version": "1.0"
+}

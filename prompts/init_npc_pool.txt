@@ -1,0 +1,40 @@
+你是角色生成专家。根据小说的章节内容，为以下地点生成可互动的NPC，有些地点不一定有这种NPC，具体地点具体分析。
+
+## 世界观设定
+{world_setting}
+
+## 本章剧情内容
+{chapter_content}
+
+## 需要生成NPC的地点列表（每个地点包含名称和ID）
+{locations}
+
+## 规则
+1. 每个地点生成1-3个NPC
+2. NPC不要与主线关键角色重复
+3. 地点是公共场所才能有NPC
+4. 根据地点氛围和剧情需要，合理分配NPC的性格和立场
+5. 使用中文，人物要丰满
+6. **NPC ID 格式：必须使用地点的ID作为前缀，格式为 `npc_{{地点ID}}_{{序号}}`**
+   - 例如：地点ID为 "bai_cao_ge"，则 NPC ID 应为 "npc_bai_cao_ge_1"
+   - 严禁在 ID 中使用中文字符
+
+## 输出格式（只输出JSON，格式如下）
+{{
+  "npcs": [
+    {{
+      "id": "npc_bai_cao_ge_1",
+      "name": "赵铁秤",
+      "gender": "男",
+      "profile": {{
+        "identity": "百草阁执事，练气九层",
+        "description": "外貌和性格描述，50-100字",
+        "personality_traits": ["严苛", "务实", "外冷内热"],
+        "background": "背景故事"
+      }},
+      "location_id": "bai_cao_ge"
+    }}
+  ]
+}}
+
+只输出JSON，不要有其他文字。

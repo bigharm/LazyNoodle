@@ -1,0 +1,107 @@
+{
+  "regions": [
+    {
+      "id": "yun_yin_cheng_region",
+      "name": "云隐城",
+      "description": "悬浮山脉中央的巨型修仙城市，街道纵横，灵光闪烁",
+      "icon": "🏙️"
+    },
+    {
+      "id": "yao_wang_gu_region",
+      "name": "药王谷",
+      "description": "药草繁茂的山谷，灵气充沛，炼丹制药圣地",
+      "icon": "🌿"
+    },
+    {
+      "id": "wan_shou_gu_region",
+      "name": "万兽谷",
+      "description": "驯养灵兽的北方山脉，兽栏与驯兽场遍布",
+      "icon": "🐾"
+    },
+    {
+      "id": "huang_yuan_region",
+      "name": "荒原",
+      "description": "云隐城外的广袤荒野，灵气稀薄，妖兽横行",
+      "icon": "🏜️"
+    }
+  ],
+  "locations": [
+    {
+      "id": "bai_cao_ge",
+      "name": "百草阁",
+      "parent": "yun_yin_cheng_region",
+      "description": "药王谷下属药材交易中心，三层木质阁楼，门前悬挂青铜药鼎纹章",
+      "icon": "🏪"
+    },
+    {
+      "id": "huan_yi_lou",
+      "name": "幻衣楼",
+      "parent": "yun_yin_cheng_region",
+      "description": "修士服装专卖店，由霓裳仙子经营，法袍具有神奇功能",
+      "icon": "👘"
+    },
+    {
+      "id": "fei_he_yi_zhan",
+      "name": "飞鹤驿站",
+      "parent": "yun_yin_cheng_region",
+      "description": "位于城市东南角，饲养巨型仙鹤为低阶修士提供交通服务",
+      "icon": "🕊️"
+    },
+    {
+      "id": "zui_xian_ju",
+      "name": "醉仙居",
+      "parent": "yun_yin_cheng_region",
+      "description": "灵厨大赛冠军开设的餐馆，招牌菜“劫雷风干肉”食用后三日内排泄带电",
+      "icon": "🍜"
+    },
+    {
+      "id": "qing_teng_lu",
+      "name": "青藤庐",
+      "parent": "yao_wang_gu_region",
+      "description": "药王谷弟子居所，被青藤缠绕的简陋木屋，位于山谷外围",
+      "icon": "🏡"
+    },
+    {
+      "id": "shan_tang",
+      "name": "膳堂",
+      "parent": "yao_wang_gu_region",
+      "description": "弟子用餐之地，也是社交与冲突的温床，曾发生“毒药比试”事件",
+      "icon": "🍽️"
+    },
+    {
+      "id": "ling_yao_tian",
+      "name": "灵药田",
+      "parent": "yao_wang_gu_region",
+      "description": "山谷中遍布的灵药种植区域，各种药草混杂生长",
+      "icon": "🌱"
+    },
+    {
+      "id": "chu_xuan_shi_yanshi",
+      "name": "楚悬实验室",
+      "parent": "wan_shou_gu_region",
+      "description": "研究院执事楚悬的私人研究场所，常年弥漫诡异药水气味",
+      "icon": "🔬"
+    },
+    {
+      "id": "jin_di",
+      "name": "禁地",
+      "parent": "wan_shou_gu_region",
+      "description": "万兽谷镇压恶龙之地，被层层封印笼罩，只有高层知晓秘密",
+      "icon": "🚫"
+    },
+    {
+      "id": "he_she",
+      "name": "鹤舍",
+      "parent": "wan_shou_gu_region",
+      "description": "饲养仙鹤的地方，环境清幽，为飞鹤驿站提供仙鹤",
+      "icon": "🦢"
+    },
+    {
+      "id": "hai_gu_hai",
+      "name": "骸骨海",
+      "parent": "huang_yuan_region",
+      "description": "荒原腹地的白骨铺就之地，上古战场遗迹，怨灵徘徊",
+      "icon": "💀"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "milestones": [
+    {
+      "id": "milestone_1",
+      "order": 1,
+      "name": "初入云隐",
+      "description": "玩家初入云隐城，作为药王谷黄组弟子，熟悉修仙界的基本规则，学习采药炼药，结识陈鱼鱼等同伴，并遭遇魏无涯的欺凌。",
+      "default_time_remaining": 60
+    },
+    {
+      "id": "milestone_2",
+      "order": 2,
+      "name": "药谷风波",
+      "description": "在药王谷中，玩家通过毒药比试、百草阁交易等事件逐渐崭露头角，与魏无涯冲突升级，并意外发现星海蛸的部分秘密。",
+      "default_time_remaining": 70
+    },
+    {
+      "id": "milestone_3",
+      "order": 3,
+      "name": "秘境探险",
+      "description": "玩家随队前往荒原或骸骨海执行任务，遭遇妖兽袭击，深入秘境发现上古遗迹，星海蛸的能力进一步觉醒，并结识虞红衣、楚悬等关键人物。",
+      "default_time_remaining": 80
+    },
+    {
+      "id": "milestone_4",
+      "order": 4,
+      "name": "暗流涌动",
+      "description": "玩家卷入血河宗内乱与万兽谷恶龙封印事件，与血河宗黑袍人建立交易，同时发现宗门之间的明争暗斗，被迫在各方势力间周旋。",
+      "default_time_remaining": 50
+    },
+    {
+      "id": "milestone_5",
+      "order": 5,
+      "name": "天道抉择",
+      "description": "面对即将到来的妖兽潮和宗门危机，玩家必须做出关键抉择：是保守秘密保全自身，还是利用星海蛸的力量改变修仙界格局，并迎接最终的天劫考验。",
+      "default_time_remaining": 40
+    }
+  ]
+}

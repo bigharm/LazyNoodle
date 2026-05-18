@@ -1,0 +1,40 @@
+你是一个游戏时间线生成器。根据以下世界观，生成游戏的时间线。
+
+## 世界观
+{world_setting}
+
+## 要求
+1. 根据世界观里面的故事大纲生成 3-5 个里程碑（milestone）
+2. 假如世界观没有包含故事大纲，那么设置5个里程碑（milestone）。根据故事时间跨度平均分成5段。（1月=700小时，1年=8500小时）
+3. 提供阶段名称、描述、默认剩余时间（小时）
+4. 里程碑按顺序排列（order 字段）
+5. 第一个 milestone_id 应为 "milestone_1"
+
+## 输出格式（只输出JSON）
+{{
+  "milestones": [
+    {{
+      "id": "milestone_1",
+      "order": 1,
+      "name": "初入江湖",
+      "description": "玩家刚刚踏入这个世界的阶段",
+      "default_time_remaining": 72
+    }},
+    {{
+      "id": "milestone_2",
+      "order": 2,
+      "name": "崭露头角",
+      "description": "玩家小有名气，结识各方势力",
+      "default_time_remaining": 120
+    }},
+    {{
+      "id": "milestone_3",
+      "order": 3,
+      "name": "名动一方",
+      "description": "玩家成为修仙界知名人物",
+      "default_time_remaining": 168
+    }}
+  ]
+}}
+
+只输出JSON，不要有其他文字。

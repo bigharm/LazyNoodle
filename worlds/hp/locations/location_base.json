@@ -1,0 +1,114 @@
+{
+  "regions": [
+    {
+      "id": "dungeon_region",
+      "name": "地下层",
+      "description": "霍格沃茨的地下部分，阴暗潮湿，隐藏着许多秘密与危险。",
+      "icon": "🕳️"
+    },
+    {
+      "id": "main_floor_region",
+      "name": "主楼层",
+      "description": "城堡的核心区域，权力与荣耀的象征，连接着各个重要场所。",
+      "icon": "🏰"
+    },
+    {
+      "id": "tower_region",
+      "name": "塔楼区",
+      "description": "高耸入云的塔楼群，承载着天空与秘密，是许多关键事件的发生地。",
+      "icon": "🏯"
+    },
+    {
+      "id": "grounds_region",
+      "name": "校外场地",
+      "description": "城堡周围的广阔土地，既有神秘的森林，也有热闹的球场。",
+      "icon": "🌳"
+    }
+  ],
+  "locations": [
+    {
+      "id": "slytherin_common_room",
+      "name": "斯莱特林公共休息室",
+      "parent": "dungeon_region",
+      "description": "位于湖底石墙之后，透过窗户可见巨乌贼触手，终年泛着绿色昏暗灯光，哥特氛围浓厚。",
+      "icon": "🐍"
+    },
+    {
+      "id": "potions_classroom",
+      "name": "魔药课教室",
+      "parent": "dungeon_region",
+      "description": "阴冷的地下室，沿墙摆放着令人毛骨悚然的玻璃标本罐，是哈利与斯内普初识之地。",
+      "icon": "🧪"
+    },
+    {
+      "id": "kitchen",
+      "name": "厨房",
+      "parent": "dungeon_region",
+      "description": "藏于水果静物画后，挠梨子可开门，由上百家养小精灵运作，供应礼堂美食。",
+      "icon": "🍴"
+    },
+    {
+      "id": "chamber_of_secrets",
+      "name": "密室",
+      "parent": "dungeon_region",
+      "description": "萨拉查·斯莱特林建于湖底深处的巢穴，仅蛇佬腔能开启，内藏蛇怪。",
+      "icon": "🐉"
+    },
+    {
+      "id": "great_hall",
+      "name": "大礼堂",
+      "parent": "main_floor_region",
+      "description": "魔法天花板反映天气，用于分院、宴会、决斗俱乐部等活动，是城堡的心脏。",
+      "icon": "🍽️"
+    },
+    {
+      "id": "entrance_hall",
+      "name": "入口大厅",
+      "parent": "main_floor_region",
+      "description": "连接大理石楼梯和地牢的枢纽，摆放着学院宝石沙漏，霍格沃茨大战的惨烈战场。",
+      "icon": "🚪"
+    },
+    {
+      "id": "gryffindor_tower",
+      "name": "格兰芬多塔楼",
+      "parent": "tower_region",
+      "description": "八楼入口由胖夫人守护，内部舒适圆形房间，哈利真正的家。",
+      "icon": "🦁"
+    },
+    {
+      "id": "astronomy_tower",
+      "name": "天文塔",
+      "parent": "tower_region",
+      "description": "霍格沃茨最高塔楼，观星课所在地，也是邓布利多被斯内普杀害的悲剧之地。",
+      "icon": "🔭"
+    },
+    {
+      "id": "room_of_requirement",
+      "name": "有求必应屋",
+      "parent": "tower_region",
+      "description": "八楼巨怪挂毯对面，只有真正需要时出现，可变成藏宝室、D.A.训练室等。",
+      "icon": "🚪"
+    },
+    {
+      "id": "owlery",
+      "name": "猫头鹰棚屋",
+      "parent": "tower_region",
+      "description": "西塔通风良好的圆形石屋，住着海德薇等上百只猫头鹰，魔法世界邮政局。",
+      "icon": "🦉"
+    },
+    {
+      "id": "forbidden_forest",
+      "name": "禁林",
+      "parent": "grounds_region",
+      "description": "禁止学生进入的密林，居住马人、独角兽、巨型蜘蛛等神奇生物，冒险常经之地。",
+      "icon": "🌲"
+    },
+    {
+      "id": "quidditch_pitch",
+      "name": "魁地奇球场",
+      "parent": "grounds_region",
+      "description": "施魔法的草坪，环绕高耸金色立柱和五十英尺高看台，见证哈利最辉煌的找球手时刻。",
+      "icon": "🏟️"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "milestones": [
+    {
+      "id": "milestone_1",
+      "order": 1,
+      "name": "大难不死的男孩",
+      "description": "哈利·波特进入霍格沃茨，结识罗恩与赫敏，经历魔法石保卫战，初识伏地魔的威胁。",
+      "default_time_remaining": 300
+    },
+    {
+      "id": "milestone_2",
+      "order": 2,
+      "name": "密室与秘密",
+      "description": "哈利发现自己是蛇佬腔，与罗恩、赫敏联手揭开密室之谜，击败蛇怪，并首次面对汤姆·里德尔的日记魂器。",
+      "default_time_remaining": 240
+    },
+    {
+      "id": "milestone_3",
+      "order": 3,
+      "name": "火焰杯与黑暗回归",
+      "description": "三强争霸赛中哈利意外成为勇士，目睹塞德里克之死，伏地魔正式复活，魔法界笼罩在黑暗之中。",
+      "default_time_remaining": 180
+    },
+    {
+      "id": "milestone_4",
+      "order": 4,
+      "name": "凤凰社与预言",
+      "description": "哈利加入凤凰社，学习大脑封闭术，经历神秘事务司之战，得知关于他与伏地魔的终极预言，邓布利多去世。",
+      "default_time_remaining": 120
+    },
+    {
+      "id": "milestone_5",
+      "order": 5,
+      "name": "最终决战",
+      "description": "哈利寻找并摧毁魂器，在霍格沃茨大战中与伏地魔决一死战，以爱的魔法终结黑暗，迎来和平。",
+      "default_time_remaining": 60
+    }
+  ]
+}
