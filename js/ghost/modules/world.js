@@ -35,6 +35,7 @@ export async function showWorldSelection() {
             <h2>🌍 选择世界</h2>
             <div style="display: flex; gap: 8px;">
                 <button id="testAIBtnMenu" class="ghost-btn test-ai-btn" style="background: #3a6a3a;">🔧 测试AI</button>
+                <button id="apiKeyBtnMenu" class="ghost-btn" style="background: #4a4a6a;">🔑 API Key</button>
             </div>
         </div>
         <div class="ghost-content">
@@ -63,6 +64,13 @@ export async function showWorldSelection() {
             if (window.testAIConnection) {
                 await window.testAIConnection();
             }
+        });
+    }
+
+    const apiKeyBtn = document.getElementById('apiKeyBtnMenu');
+    if (apiKeyBtn) {
+        apiKeyBtn.addEventListener('click', () => {
+            openApiKeyDialog();
         });
     }
     
@@ -486,4 +494,108 @@ function bindGhostModeMenuEvents(panel) {
     if (backBtn) backBtn.addEventListener('click', showWorldSelection);
     
     // 导入、创建等按钮事件绑定（调用 character 模块）
+}
+
+// 打开 API Key 设置对话框
+function openApiKeyDialog() {
+    // 尝试读取当前保存的 API Key
+    let currentKey = '';
+    try {
+        const saved = localStorage.getItem('lazynoodle_api_key');
+        if (saved) {
+            // 只显示前后几位，中间用星号
+            if (saved.length > 20) {
+                currentKey = saved.substring(0, 10) + '...' + saved.substring(saved.length - 4);
+            } else {
+                currentKey = saved;
+            }
+        }
+    } catch (e) {}
+    
+    const dialog = document.createElement('div');
+    dialog.className = 'api-key-dialog';
+    dialog.innerHTML = `
+        <div class="dialog-header">
+            <span>🔑 设置 API Key</span>
+            <button class="dialog-close-btn" style="background: none; border: none; color: #aaa; font-size: 1.2rem; cursor: pointer;">✕</button>
+        </div>
+        <div class="dialog-content">
+            <div class="form-group">
+                <label>DeepSeek API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="输入你的 API Key" value="${escapeHtml(currentKey)}">
+                <div class="form-hint">⚠️ 使用 DeepSeek 时注意不要使用代理/翻墙</div>
+                <div class="form-hint">获取方式：访问 platform.deepseek.com，注册后获取</div>
+            </div>
+            <div class="form-group">
+                <label>API Base URL</label>
+                <input type="text" id="apiBaseUrl" placeholder="https://api.deepseek.com" value="https://api.deepseek.com" readonly disabled style="opacity:0.6;">
+                <div class="form-hint">当前固定为 DeepSeek 官方地址</div>
+            </div>
+            <div class="form-group">
+                <label>模型名称</label>
+                <input type="text" id="apiModel" placeholder="deepseek-v4-flash" value="deepseek-v4-flash" readonly disabled style="opacity:0.6;">
+                <div class="form-hint">当前固定为 deepseek-v4-flash</div>
+            </div>
+            <div id="apiKeyStatus" class="api-key-status"></div>
+            <div class="dialog-buttons">
+                <button id="saveApiKeyBtn" class="save-btn">💾 保存并测试</button>
+                <button id="cancelApiKeyBtn" class="cancel-btn">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+    
+    // 关闭按钮
+    dialog.querySelector('.dialog-close-btn').addEventListener('click', () => {
+        dialog.remove();
+    });
+    
+    // 取消按钮
+    dialog.querySelector('#cancelApiKeyBtn').addEventListener('click', () => {
+        dialog.remove();
+    });
+    
+    // 保存按钮
+    dialog.querySelector('#saveApiKeyBtn').addEventListener('click', async () => {
+        const apiKey = dialog.querySelector('#apiKeyInput').value.trim();
+        console.log('输入的 API Key:', apiKey.substring(0, 10) + '...');
+        
+        if (!apiKey) {
+            showStatus(dialog, '请输入 API Key', 'error');
+            return;
+        }
+        
+        // 保存到 localStorage
+        localStorage.setItem('lazynoodle_api_key', apiKey);
+        
+        // 测试 API Key
+        showStatus(dialog, '测试中...', '');
+        
+        try {
+            console.log('发送请求到 /api/ghost/test_ai_with_key');
+            const response = await fetch('/api/ghost/test_ai_with_key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey })
+            });
+            const data = await response.json();
+            console.log('返回数据:', data);
+            
+            if (data.success) {
+                showStatus(dialog, '✅ API Key 有效！已保存', 'success');
+                // ...
+            } else {
+                showStatus(dialog, '❌ API Key 无效：' + (data.message || '请检查'), 'error');
+            }
+        } catch (err) {
+            console.error('请求失败:', err);
+            showStatus(dialog, '❌ 连接失败：' + err.message, 'error');
+        }
+    });
+}
+
+function showStatus(dialog, message, type) {
+    const statusDiv = dialog.querySelector('#apiKeyStatus');
+    statusDiv.textContent = message;
+    statusDiv.className = 'api-key-status ' + type;
 }

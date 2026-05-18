@@ -1062,3 +1062,35 @@ async def delete_task(request: dict):
     else:
         raise HTTPException(status_code=404, detail="任务不存在")
 
+@router.post("/test_ai_with_key")
+async def test_ai_with_key(request: dict):
+    """使用用户提供的 API Key 测试连接"""
+    from openai import OpenAI
+    from ..config import DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
+    
+    api_key = request.get("api_key")
+    if not api_key:
+        return {"success": False, "message": "未提供 API Key"}
+    
+    try:
+        # 使用与 test_ai 完全相同的方式创建 client
+        client = OpenAI(
+            api_key=api_key,
+            base_url=DEEPSEEK_BASE_URL
+        )
+        
+        response = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[{"role": "user", "content": "请回复：OK"}],
+            temperature=0.5
+        )
+        
+        if response.choices and response.choices[0].message.content:
+            return {"success": True, "message": "连接成功"}
+        else:
+            return {"success": False, "message": "API 返回异常"}
+            
+    except Exception as e:
+        print(f"测试 API Key 错误: {type(e).__name__}: {e}")
+        return {"success": False, "message": f"错误: {str(e)}"}
+
