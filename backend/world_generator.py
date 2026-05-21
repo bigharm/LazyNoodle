@@ -100,14 +100,21 @@ async def generate_npcs_from_worldview(locations_data: Dict) -> Dict:
     """根据世界观和地点库生成 NPC"""
     worldview = get_world_worldview()
     
-    locations_summary = []
+    locations_text = ""
     for region in locations_data.get("regions", []):
+        region_id = region.get("id")
         region_name = region.get("name")
-        region_locations = [loc.get("name") for loc in locations_data.get("locations", []) if loc.get("parent") == region.get("id")]
-        if region_locations:
-            locations_summary.append(f"- {region_name}: {', '.join(region_locations)}")
+        locations_text += f"\n【区域】id: {region_id}, name: {region_name}\n"
+        
+        # 列出该区域下的场景
+        for loc in locations_data.get("locations", []):
+            if loc.get("parent") == region_id:
+                loc_id = loc.get("id")
+                loc_name = loc.get("name")
+                locations_text += f"  - 场景 id: {loc_id}, name: {loc_name}\n"
     
-    locations_text = "\n".join(locations_summary) if locations_summary else "（无地点信息）"
+    locations_text = locations_text if locations_text else "（无地点信息）"
+    print(f"📍 地点概览:\n{locations_text}")
     
     prompt_template = _load_prompt("generate_npcs.txt")
     
