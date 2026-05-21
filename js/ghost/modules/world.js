@@ -568,28 +568,43 @@ function openApiKeyDialog() {
         // 保存到 localStorage
         localStorage.setItem('lazynoodle_api_key', apiKey);
         
-        // 测试 API Key
-        showStatus(dialog, '测试中...', '');
+        // 同时保存到后端 .env 文件
+        showStatus(dialog, '保存中...', '');
         
         try {
-            console.log('发送请求到 /api/ghost/test_ai_with_key');
-            const response = await fetch('/api/ghost/test_ai_with_key', {
+            // 调用后端 API 更新 .env
+            const saveResponse = await fetch('/api/ghost/update_api_key', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ api_key: apiKey })
             });
-            const data = await response.json();
-            console.log('返回数据:', data);
             
-            if (data.success) {
-                showStatus(dialog, '✅ API Key 有效！已保存', 'success');
-                // ...
+            if (!saveResponse.ok) {
+                throw new Error('保存失败');
+            }
+            
+            // 测试 API Key
+            showStatus(dialog, '测试中...', '');
+            
+            const testResponse = await fetch('/api/ghost/test_ai_with_key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey })
+            });
+            const testData = await testResponse.json();
+            
+            if (testData.success) {
+                alert('✅ API Key 有效！已保存\n\n请重启服务使配置生效');
+                setTimeout(() => {
+                    dialog.remove();
+                    events.emit(Events.TOAST, { message: 'API Key 已更新', duration: 2000 });
+                }, 1500);
             } else {
-                showStatus(dialog, '❌ API Key 无效：' + (data.message || '请检查'), 'error');
+                showStatus(dialog, '❌ API Key 无效：' + (testData.message || '请检查'), 'error');
             }
         } catch (err) {
-            console.error('请求失败:', err);
-            showStatus(dialog, '❌ 连接失败：' + err.message, 'error');
+            console.error('保存失败:', err);
+            showStatus(dialog, '❌ 保存失败：' + err.message, 'error');
         }
     });
 }

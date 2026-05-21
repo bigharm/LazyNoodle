@@ -2,6 +2,7 @@
 # 幽灵模式核心路由（环境交互、NPC对话、系统助手）
 
 import json
+import sys
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -1093,4 +1094,48 @@ async def test_ai_with_key(request: dict):
     except Exception as e:
         print(f"测试 API Key 错误: {type(e).__name__}: {e}")
         return {"success": False, "message": f"错误: {str(e)}"}
+
+@router.post("/update_api_key")
+async def update_api_key(request: dict):
+    """更新 .env 文件中的 API Key"""
+    import os
+    from pathlib import Path
+    
+    new_api_key = request.get("api_key")
+    if not new_api_key:
+        raise HTTPException(status_code=400, detail="缺少 API Key")
+    
+    # 获取 .env 文件路径
+    if getattr(sys, 'frozen', False):
+        # 打包模式：exe 所在目录
+        env_path = Path(sys.executable).parent / ".env"
+    else:
+        # 开发模式：项目根目录
+        env_path = Path(__file__).parent.parent.parent / ".env"
+    
+    # 读取现有 .env 文件内容
+    lines = []
+    found = False
+    
+    if env_path.exists():
+        with open(env_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+    
+    # 更新或添加 DEEPSEEK_API_KEY
+    for i, line in enumerate(lines):
+        if line.startswith("DEEPSEEK_API_KEY="):
+            lines[i] = f"DEEPSEEK_API_KEY={new_api_key}\n"
+            found = True
+            break
+    
+    if not found:
+        lines.append(f"DEEPSEEK_API_KEY={new_api_key}\n")
+    
+    # 写回文件
+    with open(env_path, 'w', encoding='utf-8') as f:
+        f.writelines(lines)
+    
+    print(f"✅ API Key 已更新到: {env_path}")
+    
+    return {"status": "ok", "message": "API Key 已保存"}
 
