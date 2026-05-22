@@ -20,6 +20,7 @@ export const elements = {
     charStatus: null,
     timeDisplay: null,
     addNPCBtn: null,
+    partyInfo: null,
     deleteNPCBtn: null
 };
 
@@ -61,6 +62,11 @@ export function createGhostPanel() {
                     <div class="section-title">📍 已解锁地点</div>
                     <div class="locations-list" id="locationsList"></div>
                 </div>
+                <!-- 队伍成员显示 -->
+                <div class="sidebar-section">
+                    <div class="section-title">👥 我的队伍</div>
+                    <div class="party-info" id="partyInfo">暂无队友</div>
+                </div>
                 <div class="sidebar-section">
                     <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>👥 周围的人</span>
@@ -97,6 +103,7 @@ export function createGhostPanel() {
     elements.tasksList = document.getElementById('tasksList');
     elements.addNPCBtn = document.getElementById('addNPCBtn');
     elements.deleteNPCBtn = document.getElementById('deleteNPCBtn');
+    elements.partyInfo = document.getElementById('partyInfo');
     
     return panel;
 }

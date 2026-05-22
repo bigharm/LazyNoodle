@@ -16,7 +16,8 @@ from backend.world_manager import (
     save_character,
     ensure_character_fields,
     load_tasks,
-    save_tasks
+    save_tasks,
+    get_npcs_dir 
 )
 from backend.location_manager import get_location_manager
 from backend.services.ai_service import call_ai, clean_json_response, call_ai_json
@@ -208,6 +209,33 @@ async def environment_interact(request: EnvironmentInteractRequest):
         else:
             active_tasks_text = "（无活跃任务）"
         
+        # 获取队伍信息
+        party_members = character.get("party", [])
+        party_text = ""
+        if party_members:
+            party_names = []
+            # 加载 NPC 索引以获取名称
+            npc_index_path = get_npcs_dir() / "npc_index.json"
+            npc_dict = {}
+            if npc_index_path.exists():
+                with open(npc_index_path, 'r', encoding='utf-8') as f:
+                    npc_index = json.load(f)
+                    for npc in npc_index.get("npcs", []):
+                        npc_dict[npc.get("id")] = npc.get("name")
+            
+            for npc_id in party_members:
+                # 先从当前场景查找
+                npc_info = next((n for n in scene_npcs if n.get("id") == npc_id), None)
+                if npc_info:
+                    party_names.append(npc_info.get("name", npc_id))
+                elif npc_id in npc_dict:
+                    party_names.append(npc_dict[npc_id])
+                else:
+                    party_names.append(npc_id)
+            party_text = f"当前队伍成员: {', '.join(party_names)}"
+        else:
+            party_text = "当前没有队友"
+        
         prompt = prompt_template.format(
             world_setting=worldview,
             location_id=request.scene,
@@ -225,7 +253,8 @@ async def environment_interact(request: EnvironmentInteractRequest):
             energy_state=energy_state,
             time_remaining=time_remaining,
             current_relationships=current_relationships,
-            active_tasks=active_tasks_text
+            active_tasks=active_tasks_text,
+            party_info=party_text
         )
         if DEBUG:
             print("\n" + "="*80)
@@ -325,8 +354,6 @@ async def environment_interact(request: EnvironmentInteractRequest):
                         for task in active_tasks:
                             if task.get("id") == task_id:
                                 task["description"] = info
-                                # 保持原有的 priority，不修改
-                                # priority 字段保持不变
                                 tasks_updated = True
                                 break
                         
@@ -338,7 +365,6 @@ async def environment_interact(request: EnvironmentInteractRequest):
                                     completed_task = active_tasks.pop(i)
                                     completed_task["completed_at"] = datetime.now().isoformat()
                                     completed_task["completion_description"] = info
-                                    # 保留原有的 priority
                                     tasks_updated = True
                                     break
                             
@@ -377,6 +403,62 @@ async def environment_interact(request: EnvironmentInteractRequest):
                     tasks_data["active_tasks"] = active_tasks
                     save_tasks(request.character_id, tasks_data)
                     print(f"📋 任务数据已更新")
+            
+            # 处理队伍更新
+            party_update = result.get("party_update")
+            if party_update:
+                party = character.get("party", [])
+                action = party_update.get("action")
+                npc_id = party_update.get("npc_id")
+                
+                print(f"🔍 队伍更新: action={action}, npc_id={npc_id}")
+                print(f"🔍 当前队伍: {party}")
+                
+                if action == "add" and npc_id and npc_id not in party:
+                    party.append(npc_id)
+                    print(f"👥 NPC {npc_id} 加入队伍")
+                    
+                    # 加入队伍时，更新 NPC 的 location_id 为当前位置
+                    npc_index_path = get_npcs_dir() / "npc_index.json"
+                    if npc_index_path.exists():
+                        with open(npc_index_path, 'r', encoding='utf-8') as f:
+                            npc_index = json.load(f)
+                        
+                        for npc in npc_index.get("npcs", []):
+                            if npc.get("id") == npc_id:
+                                old_location = npc.get("location_id")
+                                npc["location_id"] = request.scene
+                                npc["is_following"] = True  # 标记为跟随状态
+                                print(f"📍 队友 {npc.get('name')} 位置从 {old_location} 更新为 {request.scene}")
+                                break
+                        
+                        with open(npc_index_path, 'w', encoding='utf-8') as f:
+                            json.dump(npc_index, f, ensure_ascii=False, indent=2)
+                    
+                elif action == "remove" and npc_id and npc_id in party:
+                    party.remove(npc_id)
+                    print(f"👥 NPC {npc_id} 离开队伍")
+                    
+                    # 离队时，可以选择将 NPC 放回当前场景或原位置
+                    npc_index_path = get_npcs_dir() / "npc_index.json"
+                    if npc_index_path.exists():
+                        with open(npc_index_path, 'r', encoding='utf-8') as f:
+                            npc_index = json.load(f)
+                        
+                        for npc in npc_index.get("npcs", []):
+                            if npc.get("id") == npc_id:
+                                # 离队后留在当前场景
+                                npc["location_id"] = request.scene
+                                npc["is_following"] = False
+                                print(f"📍 队友 {npc.get('name')} 离队，留在 {request.scene}")
+                                break
+                        
+                        with open(npc_index_path, 'w', encoding='utf-8') as f:
+                            json.dump(npc_index, f, ensure_ascii=False, indent=2)
+                
+                character["party"] = party
+                save_character(request.character_id, character)
+                print(f"🔍 保存后队伍: {character.get('party')}")
             
             # 处理场景切换
             new_location_data = result.get("new_location")
@@ -447,7 +529,6 @@ async def environment_interact(request: EnvironmentInteractRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=422, detail=str(e))
-
 
 @router.post("/npc_dialogue")
 async def npc_dialogue(request: NPCDialogueRequest):
@@ -1138,4 +1219,19 @@ async def update_api_key(request: dict):
     print(f"✅ API Key 已更新到: {env_path}")
     
     return {"status": "ok", "message": "API Key 已保存"}
+
+@router.get("/npc_info/{npc_id}")
+async def get_npc_info(npc_id: str):
+    """根据 ID 获取 NPC 基本信息"""
+    from ..world_manager import get_npcs_dir
+    import json
+    
+    npc_index_path = get_npcs_dir() / "npc_index.json"
+    if npc_index_path.exists():
+        with open(npc_index_path, 'r', encoding='utf-8') as f:
+            npc_index = json.load(f)
+            for npc in npc_index.get("npcs", []):
+                if npc.get("id") == npc_id:
+                    return {"id": npc_id, "name": npc.get("name", npc_id)}
+    return {"id": npc_id, "name": npc_id}
 

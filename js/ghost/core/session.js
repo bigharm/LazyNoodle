@@ -39,7 +39,8 @@ export async function loadAndEnterGhostMode(characterId, sceneId) {
                 chapter_node_name: "下个节点",
                 last_rest_day: 1,
                 last_rest_hour: 20
-            }
+            },
+            party: result.party || []
         });
         
         // 转换历史记录格式

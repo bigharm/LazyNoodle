@@ -459,6 +459,12 @@ def ensure_character_fields(character: Dict) -> Dict:
     if "relationships_history" not in character:
         character["relationships_history"] = []
     
+    # 组队字段
+    if "party" not in character:
+        character["party"] = []
+    elif not isinstance(character["party"], list):
+        character["party"] = []
+    
     return character
 
 

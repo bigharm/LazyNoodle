@@ -2,7 +2,7 @@
 # 地点管理相关路由
 
 from fastapi import APIRouter, HTTPException
-from backend.world_manager import get_locations_dir, get_current_world_path
+from backend.world_manager import get_locations_dir, get_current_world_path, get_npcs_dir
 from backend.location_manager import get_location_manager
 
 router = APIRouter()
@@ -190,11 +190,12 @@ async def get_npcs_by_scene(scene_name: str):
     return {"npcs": npcs}
 
 
-@router.post("/update_scene")  # 移除 /ghost 前缀
+@router.post("/update_scene") 
 async def update_scene(request: dict):
-    """更新角色场景"""
-    from backend.routes.character import load_character, save_character
+    """更新角色场景，同时更新队友位置"""
+    from ..world_manager import get_npcs_dir, load_character, save_character
     from datetime import datetime
+    import json
     
     character_id = request.get("character_id")
     scene = request.get("scene")
@@ -218,5 +219,26 @@ async def update_scene(request: dict):
         }
     
     save_character(character_id, character)
+    
+    # 更新队友的位置 
+    party = character.get("party", [])
+    if party:
+        npc_index_path = get_npcs_dir() / "npc_index.json"
+        if npc_index_path.exists():
+            with open(npc_index_path, 'r', encoding='utf-8') as f:
+                npc_index = json.load(f)
+            
+            updated = False
+            for npc in npc_index.get("npcs", []):
+                if npc.get("id") in party:
+                    old_location = npc.get("location_id")
+                    npc["location_id"] = scene
+                    updated = True
+                    print(f"📍 队友 {npc.get('name')} 从 {old_location} 移动到 {scene}")
+            
+            if updated:
+                with open(npc_index_path, 'w', encoding='utf-8') as f:
+                    json.dump(npc_index, f, ensure_ascii=False, indent=2)
+                print(f"👥 队伍成员位置已同步到 {scene}")
     
     return {"status": "ok", "current_scene": scene, "old_scene": old_scene}

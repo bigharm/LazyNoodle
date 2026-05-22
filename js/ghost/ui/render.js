@@ -149,9 +149,13 @@ export async function renderSidebarLocations() {
 export async function renderSidebarNPCs() {
     if (!elements.npcList) return;
     
+    // 获取当前队伍成员ID列表
+    const partyIds = state.currentSession.party || [];
+    console.log('🔍 渲染NPC列表，当前队伍成员:', partyIds);
+    
     let html = '';
     
-    // 系统助手
+    // 系统助手（始终显示）
     html += `<div class="npc-item system-helper-item" data-npc-id="system_helper" data-npc-name="系统助手">
                 <div class="npc-icon">🤖</div>
                 <div class="npc-info">
@@ -163,13 +167,22 @@ export async function renderSidebarNPCs() {
                 </div>
             </div>`;
     
-    // 其他NPC
+    // 其他NPC - 过滤掉队伍中的成员
     for (const npc of state.currentSceneNPCs) {
+        // 跳过已经在队伍中的NPC
+        if (partyIds.includes(npc.id)) {
+            console.log(`⏭️ 跳过队伍成员: ${npc.name} (${npc.id})`);
+            continue;
+        }
+        
         const profile = npc.profile || {};
+        // 检查是否已在队伍中（用于显示组队状态）
+        const isInParty = partyIds.includes(npc.id);
+        
         html += `<div class="npc-item" data-npc-id="${npc.id}" data-npc-name="${escapeHtml(npc.name)}">
                     <div class="npc-icon">👤</div>
                     <div class="npc-info">
-                        <div class="npc-name">${escapeHtml(npc.name)}</div>
+                        <div class="npc-name">${escapeHtml(npc.name)}${isInParty ? ' 🧑‍🤝‍🧑' : ''}</div>
                         <div class="npc-identity">${escapeHtml(profile.identity || '普通人')}</div>
                     </div>
                     <div class="npc-actions">
@@ -193,7 +206,6 @@ export async function renderSidebarNPCs() {
     // 绑定NPC按钮
     bindNPCButtons();
 }
-
 // 渲染角色信息
 export function renderCharacterInfo() {
     const profile = state.currentSession.profile || {};
@@ -414,6 +426,7 @@ export async function showGhostChatInterface() {
     await renderSidebarLocations();
     await refreshNPCList();
     await renderTasksPanel();
+    await renderPartyList();
     renderCharacterInfo();
     updateTimeDisplay();
     
@@ -494,3 +507,44 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// 渲染队伍信息（简单字符串形式）
+export async function renderPartyList() {
+    console.log('调用renderPartyList');
+    if (!elements.partyInfo) return;
+    
+    const party = state.currentSession.party || [];
+    console.log('🔍 渲染队伍, party:', party);
+    
+    if (party.length === 0) {
+        elements.partyInfo.innerHTML = '暂无队友';
+        return;
+    }
+    
+    // 获取队友名称
+    const partyNames = [];
+    for (const npcId of party) {
+        // 先从当前场景查找
+        let npcInfo = state.currentSceneNPCs.find(n => n.id === npcId);
+        
+        // 如果不在当前场景，从后端获取
+        if (!npcInfo) {
+            try {
+                const response = await fetch(`/api/ghost/npc_info/${npcId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    partyNames.push(data.name || npcId);
+                    continue;
+                }
+            } catch (err) {
+                console.warn('获取NPC信息失败:', err);
+            }
+            partyNames.push(npcId);
+        } else {
+            partyNames.push(npcInfo.name);
+        }
+    }
+    
+    elements.partyInfo.innerHTML = `🧑‍🤝‍🧑 ${partyNames.join('、')}`;
+}
+

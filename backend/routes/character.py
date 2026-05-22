@@ -127,6 +127,7 @@ async def create_character_endpoint(request: CreateCharacterRequest):
             "health": 100,
             "current_scene": "unknown"
         },
+        "party": [],  # 队伍成员 ID 列表
         "relationships": {},
         "inventory": [],
         "conversation_history": [],
@@ -191,7 +192,8 @@ async def load_character_endpoint(request: LoadCharacterRequest):
         "death_cause": character["status"].get("death_cause"),
         "conversation_history": character.get("conversation_history", []),
         "unlocked_locations": character.get("unlocked_locations", {}),
-        "time": character.get("time", {})
+        "time": character.get("time", {}),
+        "party": character.get("party", []) 
     }
 
 
