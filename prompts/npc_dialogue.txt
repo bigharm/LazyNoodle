@@ -3,7 +3,7 @@
 ## 世界观
 {world_setting}
 
-## 当前NPC信息
+## 所有NPC信息
 {npc_info}
 
 ## 玩家信息
@@ -11,6 +11,9 @@
 
 ## 当前场景
 {scene}
+
+## 当前队伍成员：
+{party_info}
 
 ## 当前场景中的其他NPC
 {scene_npcs}
@@ -45,6 +48,15 @@
 5.只有态度**明显变化**才需要在 `relationship_update`返回信息， 如果没有明显的态度变化，`relationship_update` 设为 null
 6. 必须返回整个【NPC态度集合】，而不是新增或者改变的部分。
 
+## 队伍更新规则
+- 队伍含义为共同行动，可以是长期的一致行动，也可以是临时的行动，比如带路，护送，包括一起去逛街吃饭等等
+- 原本不在队伍的NPC，新加入队伍（接受玩家邀请，或NPC主动提出一起行动，带路等等）：[{{"action": "add", "npc_id": "npc_id1"}},{{"action": "add", "npc_id": "npc_id2"}}]
+- NPC离开队伍：[{{"action": "remove", "npc_id": "npc_id"}}]
+**重要：npc_id 必须使用【当前场景中的其他NPC】中提供的 id 字段值，不能使用名称！**
+例如，如果 NPC 信息显示为 `- id: npc_huang_cheng_1 | 慕容昭：...`，则 `"npc_id": "npc_huang_cheng_1"`，而不是 `"npc_id": "慕容昭"。
+示例：
+"party_updates": {{"action": "add", "npc_id": "npc_hagrid"}}
+
 ## 任务更新规则
 每次对话后，检查是否推进了任何活跃任务：
 
@@ -63,9 +75,16 @@
 "is_dead": false,
 "time_cost": 0,
 "new_energy_state": null,
-"new_location": null,
+  "new_location": {{
+    "name": "新地点名称",
+    "type": "existing",
+    "parent_id": "父区域ID",
+    "description": "地点描述",
+    "icon": "📍"
+  }},
 "relationship_update": null,
 "task_updates": [],
+"party_updates": [],
 "exit_dialogue": false
 }}
 
@@ -78,6 +97,7 @@ new_energy_state: 新的状态，可选值：精力充沛、略有疲惫、感�
 new_location: 新地点信息（可选，默认null）
 relationship_update: 态度集合字符串（可选，默认null）
 task_updates: 任务更新数组（可选，默认[]）
+party_updates:队伍变化更新数组（可选，默认[]）
 exit_dialogue: 是否强制退出对话（可选，默认false）
 
 示例1 - 正常交互，无态度变化：
@@ -89,6 +109,7 @@ exit_dialogue: 是否强制退出对话（可选，默认false）
 "new_location": null,
 "relationship_update": null,
 "task_updates": [],
+"party_updates": [],
 "exit_dialogue": false
 }}
 
@@ -101,6 +122,7 @@ exit_dialogue: 是否强制退出对话（可选，默认false）
 "new_location": null,
 "relationship_update": "赵铁秤:敌对(当众辱骂),柳青鸾:轻视",
 "task_updates": [],
+"party_updates": [],
 "exit_dialogue": false
 }}
 
@@ -119,6 +141,7 @@ exit_dialogue: 是否强制退出对话（可选，默认false）
 }},
 "relationship_update": null,
 "task_updates": [],
+"party_updates": [{{"action": "remove", "npc_id": "npc_hagrid"}},{{"action": "remove", "npc_id": "npc_harry"}}],
 "exit_dialogue": false
 }}
 
@@ -131,17 +154,19 @@ exit_dialogue: 是否强制退出对话（可选，默认false）
 "new_location": null,
 "relationship_update": null,
 "task_updates": [],
+"party_updates": [],
 "exit_dialogue": false
 }}
 
 示例5 - 完成任务：
 {{
-"description": "（斯普劳特教授接过夜光草，脸上露出欣慰的笑容）‘太感谢你了！这正是我需要的。来，这是我答应给你的生长药水。’",
+"description": "（斯普劳特教授接过夜光草，脸上露出欣慰的笑容）‘太感谢你了！这正是我需要的。来，这是我答应给你的生长药水。’海格对你说：“走，我带你去看个好玩的”",
 "is_dead": false,
 "time_cost": 0.5,
 "new_energy_state": null,
 "new_location": null,
 "relationship_update": "斯普劳特:亲密(完成了重要委托)",
+"party_updates": [{{"action": "add", "npc_id": "npc_hagrid"}}],
 "task_updates": [ {{"task_id": "task_1700000000","action": "complete","info": "你已经将五株夜光草交给了斯普劳特教授。她非常感激，给了你一瓶生长药水作为奖励。任务完成！"}} ],
 "exit_dialogue": false
 }}

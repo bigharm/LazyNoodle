@@ -15,7 +15,7 @@ export async function openNPCCreationDialog() {
         <div class="dialog-content">
             <div class="form-group">
                 <label>🎭 描述你想创建的NPC</label>
-                <textarea id="npcDescInput" rows="4" placeholder="例如：一个喜欢喝酒的矮人铁匠，脾气暴躁但手艺精湛..."></textarea>
+                <textarea id="npcDescInput" rows="5" placeholder="例如：一个喜欢喝酒的矮人铁匠，脾气暴躁但手艺精湛..."></textarea>
             </div>
             <div class="dialog-buttons" style="display: flex; justify-content: center; gap: 12px; margin-bottom: 16px;">
                 <button id="createNPCBtn" class="confirm-btn" style="background: #2a6a2a;">✨ AI生成</button>
@@ -32,9 +32,6 @@ export async function openNPCCreationDialog() {
     dialog.querySelector('.dialog-close-btn').addEventListener('click', () => {
         dialog.remove();
     });
-    
-    // 取消/关闭按钮（ESC键）
-    const closeDialog = () => dialog.remove();
     
     // AI生成按钮
     dialog.querySelector('#createNPCBtn').addEventListener('click', async () => {
@@ -74,8 +71,117 @@ export async function openNPCCreationDialog() {
     // 导入按钮
     dialog.querySelector('#importNPCBtn').addEventListener('click', () => {
         dialog.remove();
-        // 调用导入NPC功能
         importNPCFromFile();
+    });
+}
+
+// 显示NPC确认界面
+async function showNPCConfirmDialog(profile, originalDescription, parentDialog) {
+    parentDialog.innerHTML = `
+        <div class="dialog-header">
+            <span>✅ 确认NPC信息</span>
+            <button class="dialog-close-btn" style="background: none; border: none; color: #aaa; font-size: 1.2rem; cursor: pointer;">✕</button>
+        </div>
+        <div class="dialog-content">
+            <div class="form-group">
+                <label>📋 AI整理的角色设定</label>
+                <div style="background: #0a0a12; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                    <div><span style="color: #ffaa66;">姓名：</span>${escapeHtml(profile.name || '未设置')}</div>
+                    <div><span style="color: #ffaa66;">性别：</span>${escapeHtml(profile.gender || '未设置')}</div>
+                    <div><span style="color: #ffaa66;">身份：</span>${escapeHtml(profile.identity || '未设置')}</div>
+                    <div><span style="color: #ffaa66;">外貌：</span>${escapeHtml(profile.appearance || '未设置')}</div>
+                    <div><span style="color: #ffaa66;">性格：</span>${escapeHtml(profile.personality || '未设置')}</div>
+                    <div><span style="color: #ffaa66;">背景：</span>${escapeHtml(profile.background || '未设置')}</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>📍 出现地点</label>
+                <input type="text" id="npcLocation" value="${escapeHtml(state.currentSession.currentScene)}" placeholder="NPC出现的地点">
+                <div class="form-hint" style="font-size: 0.7rem; color: #888;">默认为当前位置</div>
+            </div>
+            <div class="dialog-buttons">
+                <button id="confirmCreateNPCBtn" class="confirm-btn" style="background: #2a6a2a;">✅ 确认创建</button>
+                <button id="backToEditBtn" class="cancel-btn">返回修改</button>
+            </div>
+        </div>
+    `;
+    
+    // 关闭按钮
+    parentDialog.querySelector('.dialog-close-btn').addEventListener('click', () => {
+        parentDialog.remove();
+        hideLoading();
+    });
+    
+    // 返回修改
+    parentDialog.querySelector('#backToEditBtn').addEventListener('click', () => {
+        // 重新显示创建界面
+        openNPCCreationDialog();
+        parentDialog.remove();
+    });
+    
+    // 确认创建
+    parentDialog.querySelector('#confirmCreateNPCBtn').addEventListener('click', async () => {
+        const locationName = parentDialog.querySelector('#npcLocation').value.trim();
+        if (!locationName) {
+            showToast('请填写出现地点', 2000);
+            return;
+        }
+        
+        // 获取地点ID
+        let locationId = locationName;
+        try {
+            const locRes = await fetch(`/api/ghost/locations/by_name/${encodeURIComponent(locationName)}`);
+            if (locRes.ok) {
+                const locData = await locRes.json();
+                locationId = locData.id || locationName;
+            }
+        } catch (err) {
+            console.warn('获取地点ID失败:', err);
+        }
+        
+        // 生成唯一ID
+        const npcId = `npc_${Date.now()}_${profile.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')}`;
+        
+        const npcData = {
+            id: npcId,
+            name: profile.name,
+            gender: profile.gender || '未知',
+            profile: {
+                identity: profile.identity || '旅行者',
+                description: `外貌：${profile.appearance || '未知'}\n性格：${profile.personality || '未知'}`,
+                personality_traits: profile.personality ? profile.personality.split(/[，,]/) : [],
+                background: profile.background || '来历不明',
+                created_by: 'player',
+                created_at: new Date().toISOString()
+            },
+            location_id: locationId,
+            active: true,
+            dead: false
+        };
+        
+        showLoading('创建NPC中...');
+        
+        try {
+            const response = await fetch('/api/ghost/add_npc', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ npc: npcData })
+            });
+            
+            if (response.ok) {
+                showToast(`✅ NPC「${profile.name}」创建成功！`, 2000, 'success');
+                parentDialog.remove();
+                // 刷新NPC列表
+                await refreshNPCList();
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail || '创建失败');
+            }
+        } catch (err) {
+            showToast('❌ 创建失败: ' + err.message, 3000, 'error');
+        } finally {
+            hideLoading();
+        }
     });
 }
 
@@ -93,49 +199,116 @@ async function importNPCFromFile() {
         showLoading('导入NPC中...');
         
         try {
-            let characterDescription = '';
-            
+            let content = '';
             if (file.type === 'image/png') {
-                characterDescription = await readPngTextData(file);
+                content = await readPngTextData(file);
             } else {
-                characterDescription = await file.text();
+                content = await file.text();
             }
             
-            if (!characterDescription?.trim()) {
+            if (!content.trim()) {
                 throw new Error('未能从文件中读取到角色信息');
             }
             
-            // 解析角色信息
-            let characterData;
+            let profile;
             try {
-                characterData = JSON.parse(characterDescription);
+                const data = JSON.parse(content);
+                profile = data.profile || data;
             } catch {
-                // 如果不是JSON，则通过AI解析
+                // 如果不是JSON，通过AI解析
                 const validateResult = await fetch('/api/ghost/validate_character', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        user_input: characterDescription,
+                        user_input: content,
                         chapter_index: window.currentChapterIndex || 1
                     })
                 });
                 const validateData = await validateResult.json();
-                characterData = { profile: validateData.suggested_profile };
+                profile = validateData.suggested_profile;
             }
-            
-            const profile = characterData.profile || characterData;
             
             if (!profile || !profile.name) {
                 throw new Error('无法解析NPC信息');
             }
             
             // 显示确认对话框
-            showImportedNPCConfirmDialog(profile, file.name, null);
+            const dialog = document.createElement('div');
+            dialog.className = 'npc-create-dialog';
+            dialog.innerHTML = `
+                <div class="dialog-header">
+                    <span>✅ 确认导入NPC</span>
+                    <button class="dialog-close-btn" style="background: none; border: none; color: #aaa; font-size: 1.2rem; cursor: pointer;">✕</button>
+                </div>
+                <div class="dialog-content">
+                    <div class="form-group">
+                        <label>📋 角色信息</label>
+                        <div style="background: #0a0a12; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                            <div><span style="color: #ffaa66;">姓名：</span>${escapeHtml(profile.name || '未设置')}</div>
+                            <div><span style="color: #ffaa66;">身份：</span>${escapeHtml(profile.identity || '未设置')}</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>📍 出现地点</label>
+                        <input type="text" id="npcLocation" value="${escapeHtml(state.currentSession.currentScene)}">
+                    </div>
+                    <div class="dialog-buttons">
+                        <button id="confirmImportBtn" class="confirm-btn">✅ 确认导入</button>
+                        <button id="cancelBtn" class="cancel-btn">取消</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(dialog);
+            
+            dialog.querySelector('.dialog-close-btn').addEventListener('click', () => dialog.remove());
+            dialog.querySelector('#cancelBtn').addEventListener('click', () => dialog.remove());
+            
+            dialog.querySelector('#confirmImportBtn').addEventListener('click', async () => {
+                const locationName = dialog.querySelector('#npcLocation').value.trim();
+                let locationId = locationName;
+                try {
+                    const locRes = await fetch(`/api/ghost/locations/by_name/${encodeURIComponent(locationName)}`);
+                    if (locRes.ok) {
+                        const locData = await locRes.json();
+                        locationId = locData.id || locationName;
+                    }
+                } catch (err) {}
+                
+                const npcId = `npc_imported_${Date.now()}_${profile.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')}`;
+                const npcData = {
+                    id: npcId,
+                    name: profile.name,
+                    gender: profile.gender || '未知',
+                    profile: {
+                        identity: profile.identity || '旅行者',
+                        description: `外貌：${profile.appearance || '未知'}\n性格：${profile.personality || '未知'}`,
+                        background: profile.background || '来历不明',
+                        imported_from: 'file'
+                    },
+                    location_id: locationId,
+                    active: true,
+                    dead: false
+                };
+                
+                const response = await fetch('/api/ghost/add_npc', {
+                    method: 'POST',
+                    body: JSON.stringify({ npc: npcData }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    showToast(`✅ NPC「${profile.name}」导入成功！`, 2000, 'success');
+                    dialog.remove();
+                    await refreshNPCList();
+                } else {
+                    throw new Error('导入失败');
+                }
+            });
             
         } catch (err) {
-            hideLoading();
             showToast('❌ 导入失败：' + err.message, 3000, 'error');
         } finally {
+            hideLoading();
             document.body.removeChild(fileInput);
         }
     });
@@ -144,111 +317,7 @@ async function importNPCFromFile() {
     fileInput.click();
 }
 
-// 显示导入NPC的确认界面
-async function showImportedNPCConfirmDialog(profile, fileName, parentDialog) {
-    const dialog = document.createElement('div');
-    dialog.className = 'npc-create-dialog';
-    dialog.innerHTML = `
-        <div class="dialog-header">
-            <span>✅ 确认导入NPC</span>
-            <button class="dialog-close-btn" style="background: none; border: none; color: #aaa; font-size: 1.2rem; cursor: pointer;">✕</button>
-        </div>
-        <div class="dialog-content">
-            <div class="form-group">
-                <label>📋 角色信息（来自: ${escapeHtml(fileName)}）</label>
-                <div style="background: #0a0a12; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
-                    <div><span style="color: #ffaa66;">姓名：</span>${escapeHtml(profile.name || '未设置')}</div>
-                    <div><span style="color: #ffaa66;">性别：</span>${escapeHtml(profile.gender || '未设置')}</div>
-                    <div><span style="color: #ffaa66;">身份：</span>${escapeHtml(profile.identity || '未设置')}</div>
-                    <div><span style="color: #ffaa66;">外貌：</span>${escapeHtml(profile.appearance || '未设置')}</div>
-                    <div><span style="color: #ffaa66;">性格：</span>${escapeHtml(profile.personality || '未设置')}</div>
-                    <div><span style="color: #ffaa66;">背景：</span>${escapeHtml(profile.background || '未设置')}</div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>📍 出现地点</label>
-                <input type="text" id="npcLocation" value="${escapeHtml(state.currentSession.currentScene)}" placeholder="NPC出现的地点">
-                <div class="form-hint" style="font-size: 0.7rem; color: #888;">默认为当前位置</div>
-            </div>
-            <div class="dialog-buttons">
-                <button id="confirmCreateNPCBtn" class="confirm-btn" style="background: #2a6a2a;">✅ 确认导入</button>
-                <button id="cancelCreateBtn" class="cancel-btn">取消</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(dialog);
-    
-    dialog.querySelector('.dialog-close-btn').addEventListener('click', () => {
-        dialog.remove();
-        hideLoading();
-    });
-    
-    dialog.querySelector('#cancelCreateBtn').addEventListener('click', () => {
-        dialog.remove();
-        hideLoading();
-    });
-    
-    dialog.querySelector('#confirmCreateNPCBtn').addEventListener('click', async () => {
-        const locationName = dialog.querySelector('#npcLocation').value.trim();
-        if (!locationName) {
-            showToast('请填写出现地点', 2000);
-            return;
-        }
-        
-        let locationId = locationName;
-        try {
-            const locRes = await fetch(`/api/ghost/locations/by_name/${encodeURIComponent(locationName)}`);
-            if (locRes.ok) {
-                const locData = await locRes.json();
-                locationId = locData.id || locationName;
-            }
-        } catch (err) {
-            console.warn('获取地点ID失败:', err);
-        }
-        
-        const npcData = {
-            id: `npc_imported_${Date.now()}_${profile.name}`,
-            name: profile.name,
-            gender: profile.gender || '未知',
-            profile: {
-                identity: profile.identity || '旅行者',
-                description: `外貌：${profile.appearance || '未知'}\n性格：${profile.personality || '未知'}`,
-                personality_traits: profile.personality ? profile.personality.split(/[，,]/) : [],
-                background: profile.background || '来历不明',
-                imported_from: 'file',
-                imported_at: new Date().toISOString()
-            },
-            location_id: locationId,
-            active: true,
-            dead: false
-        };
-        
-        showLoading('创建NPC中...');
-        
-        try {
-            const response = await fetch('/api/ghost/add_npc', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ npc: npcData })
-            });
-            
-            if (response.ok) {
-                showToast(`✅ NPC「${profile.name}」导入成功！`, 2000, 'success');
-                dialog.remove();
-                await refreshNPCList();
-            } else {
-                const error = await response.json();
-                throw new Error(error.detail || '导入失败');
-            }
-        } catch (err) {
-            showToast('❌ 导入失败: ' + err.message, 3000, 'error');
-        } finally {
-            hideLoading();
-        }
-    });
-}
-
-// 读取PNG中的tEXt数据
+// PNG 读取函数
 async function readPngTextData(file) {
     const arrayBuffer = await file.arrayBuffer();
     const dataView = new DataView(arrayBuffer);
@@ -261,7 +330,7 @@ async function readPngTextData(file) {
     }
     
     let pos = 8;
-    let allTextData = [];
+    let textData = '';
     
     while (pos < arrayBuffer.byteLength) {
         const length = dataView.getUint32(pos);
@@ -274,18 +343,19 @@ async function readPngTextData(file) {
             while (nullPos < dataBytes.length && dataBytes[nullPos] !== 0) {
                 nullPos++;
             }
-            const keyword = new TextDecoder().decode(dataBytes.slice(0, nullPos));
             const text = new TextDecoder().decode(dataBytes.slice(nullPos + 1));
-            allTextData.push({ keyword, text });
+            if (text) {
+                textData = text;
+                break;
+            }
         }
         pos += 4 + 4 + length + 4;
     }
     
-    const characterBlock = allTextData.find(b => b.keyword === 'CharacterData');
-    if (!characterBlock) {
+    if (!textData) {
         throw new Error('PNG文件中未找到角色数据');
     }
-    return characterBlock.text;
+    return textData;
 }
 
 function escapeHtml(text) {

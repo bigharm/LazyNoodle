@@ -104,11 +104,13 @@
 - `info`: 更新后的完整任务描述
 
 ## 队伍更新规则
-- 邀请组队：{{"action": "add", "npc_id": "npc_id"}}
-- 让队友离队：{{"action": "remove", "npc_id": "npc_id"}}
+- 队伍含义为共同行动，可以是长期的一致行动，也可以是临时的行动，比如带路，护送，包括一起去逛街吃饭等等
+- 原本不在队伍的NPC，新加入队伍（接受玩家邀请，或NPC主动提出一起行动，带路等等）：[{{"action": "add", "npc_id": "npc_id1"}},{{"action": "add", "npc_id": "npc_id2"}}]
+- NPC离开队伍：[{{"action": "remove", "npc_id": "npc_id"}}]
+**重要：npc_id 必须使用【当前场景中的其他NPC】中提供的 id 字段值，不能使用名称！**
+例如，如果 NPC 信息显示为 `- id: npc_huang_cheng_1 | 慕容昭：...`，则 `"npc_id": "npc_huang_cheng_1"`，而不是 `"npc_id": "慕容昭"。
 示例：
-"party_update": {{"action": "add", "npc_id": "npc_hagrid"}}
-
+"party_updates": {{"action": "add", "npc_id": "npc_hagrid"}}
 
 ## 输出格式（只输出JSON）
 
@@ -123,15 +125,26 @@
     "parent_id": "父区域ID",
     "description": "地点描述",
     "icon": "📍"
-  }}
+  }},
+  "relationship_update": null,
+  "task_updates": [],
+"party_updates": [],
+  "exit_dialogue": false
 }}
 
-**字段说明：**
-- `description`: 世界的回应描述（必填）
-- `is_dead`: 是否死亡（必填，默认false）
-- `time_cost`: 时间消耗，单位小时（可选，默认0）
-- `new_energy_state`: 新的状态，可选值：精力充沛、略有疲惫、感到疲倦、疲惫不堪、灵力枯竭（可选，默认null）
-- `new_location`: 新地点信息（可选，默认null）
+字段说明：
+
+description: 世界的回应描述（必填）
+is_dead: 是否死亡（必填，默认false）
+time_cost: 时间消耗，单位小时（可选，默认0）
+new_energy_state: 新的状态，可选值：精力充沛、略有疲惫、感到疲倦、疲惫不堪、灵力枯竭（可选，默认null）
+new_location: 新地点信息（可选，默认null）
+relationship_update: 态度集合字符串（可选，默认null）
+task_updates: 任务更新数组（可选，默认[]）
+party_updates:队伍变化更新数组（可选，默认[]）
+exit_dialogue: 是否强制退出对话（可选，默认false）
+
+
 
 **规则：**
 1. `type: "existing"` - 地点已存在于上面的地点库中，只需提供 name
@@ -146,6 +159,7 @@
   "time_cost": 3,
   "new_energy_state": "略有疲惫",
   "new_location": null，
+  "party_updates": [],
   "task_updates": [
     {{
         "task_id": "quest_001",
@@ -174,7 +188,7 @@
     "description": "阴暗潮湿的地下牢房，铁门紧锁",
     "icon": "🔒"
   }}，
-  "party_update": {{"action": "remove", "npc_id": "npc_hagrid"}}
+  "party_updates": [{{"action": "remove", "npc_id": "npc_hagrid"}}]
 }}
 
 只输出JSON，不要有其他文字。

@@ -330,6 +330,9 @@ export async function callAIForDialogue(action, speech, isGreeting = false, isCo
         // 刷新任务面板
         const { refreshTasksPanel } = await import('../ui/render.js');
         await refreshTasksPanel();
+
+        const { renderPartyList } = await import('../ui/render.js');
+        await renderPartyList();
     }
 }
 

@@ -190,7 +190,7 @@ async def get_npcs_by_scene(scene_name: str):
     return {"npcs": npcs}
 
 
-@router.post("/update_scene") 
+@router.post("/update_scene")
 async def update_scene(request: dict):
     """更新角色场景，同时更新队友位置"""
     from ..world_manager import get_npcs_dir, load_character, save_character
@@ -220,9 +220,15 @@ async def update_scene(request: dict):
     
     save_character(character_id, character)
     
-    # 更新队友的位置 
+    # 更新队友的位置（使用地点 ID）
     party = character.get("party", [])
     if party:
+        # 获取新场景的地点 ID
+        from ..location_manager import get_location_manager
+        lm = get_location_manager(get_locations_dir())
+        new_location = lm.get_location_by_name(scene)
+        new_location_id = new_location.id if new_location else scene
+        
         npc_index_path = get_npcs_dir() / "npc_index.json"
         if npc_index_path.exists():
             with open(npc_index_path, 'r', encoding='utf-8') as f:
@@ -232,13 +238,14 @@ async def update_scene(request: dict):
             for npc in npc_index.get("npcs", []):
                 if npc.get("id") in party:
                     old_location = npc.get("location_id")
-                    npc["location_id"] = scene
+                    npc["location_id"] = new_location_id
                     updated = True
-                    print(f"📍 队友 {npc.get('name')} 从 {old_location} 移动到 {scene}")
+                    print(f"📍 队友 {npc.get('name')} 从 {old_location} 移动到 {new_location_id} ({scene})")
             
             if updated:
                 with open(npc_index_path, 'w', encoding='utf-8') as f:
                     json.dump(npc_index, f, ensure_ascii=False, indent=2)
-                print(f"👥 队伍成员位置已同步到 {scene}")
+                print(f"👥 队伍成员位置已同步到 {new_location_id} ({scene})")
     
     return {"status": "ok", "current_scene": scene, "old_scene": old_scene}
+

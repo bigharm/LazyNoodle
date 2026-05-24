@@ -131,14 +131,15 @@ def format_locations_for_ai() -> str:
 
 
 def format_npcs_for_ai(npcs: List[Dict]) -> str:
-    """格式化 NPC 信息供 AI 使用"""
+    """格式化 NPC 信息供 AI 使用，包含 id"""
     if not npcs:
         return "（没有其他人在场）"
     
     lines = []
     for npc in npcs:
         profile = npc.get("profile", {})
-        lines.append(f"- {npc.get('name')}：{profile.get('identity', '普通人')}")
+        # 添加 id 信息
+        lines.append(f"- id: {npc.get('id')} | 名称: {npc.get('name')} | 身份: {profile.get('identity', '普通人')}")
         if profile.get("description"):
             lines.append(f"  外貌性格：{profile.get('description')}")
     return "\n".join(lines)
@@ -224,11 +225,7 @@ async def environment_interact(request: EnvironmentInteractRequest):
                         npc_dict[npc.get("id")] = npc.get("name")
             
             for npc_id in party_members:
-                # 先从当前场景查找
-                npc_info = next((n for n in scene_npcs if n.get("id") == npc_id), None)
-                if npc_info:
-                    party_names.append(npc_info.get("name", npc_id))
-                elif npc_id in npc_dict:
+                if npc_id in npc_dict:
                     party_names.append(npc_dict[npc_id])
                 else:
                     party_names.append(npc_id)
@@ -350,14 +347,12 @@ async def environment_interact(request: EnvironmentInteractRequest):
                     info = update.get("info", "")
                     
                     if action == "update" or action == "complete":
-                        # 更新活跃任务，保持原有的 priority
                         for task in active_tasks:
                             if task.get("id") == task_id:
                                 task["description"] = info
                                 tasks_updated = True
                                 break
                         
-                        # 如果是完成状态，移动到已完成列表
                         if action == "complete":
                             completed_task = None
                             for i, task in enumerate(active_tasks):
@@ -372,7 +367,6 @@ async def environment_interact(request: EnvironmentInteractRequest):
                                 tasks_data["completed_tasks"].append(completed_task)
                     
                     elif action == "add":
-                        # 添加新任务（从环境交互中生成）
                         priority = update.get("priority", 100)
                         priority = max(1, min(1000, priority))
                         new_task = {
@@ -387,7 +381,6 @@ async def environment_interact(request: EnvironmentInteractRequest):
                         tasks_updated = True
                     
                     elif action == "update_priority":
-                        # 更新任务优先级
                         for task in active_tasks:
                             if task.get("id") == task_id:
                                 new_priority = update.get("priority", 100)
@@ -397,68 +390,100 @@ async def environment_interact(request: EnvironmentInteractRequest):
                                 print(f"📋 任务优先级已更新: {task.get('name')} -> {new_priority}")
                                 break
                 
-                # 按优先级排序活跃任务
                 if tasks_updated:
                     active_tasks.sort(key=lambda x: x.get("priority", 100))
                     tasks_data["active_tasks"] = active_tasks
                     save_tasks(request.character_id, tasks_data)
                     print(f"📋 任务数据已更新")
             
-            # 处理队伍更新
-            party_update = result.get("party_update")
-            if party_update:
+            # 获取当前场景的地点 ID（用于队伍更新）
+            lm = get_location_manager(get_locations_dir())
+            current_location = lm.get_location_by_name(request.scene)
+            current_location_id = current_location.id if current_location else request.scene
+            
+            # 处理队伍更新（数组格式）
+            party_updates = result.get("party_updates", [])
+            if party_updates:
                 party = character.get("party", [])
-                action = party_update.get("action")
-                npc_id = party_update.get("npc_id")
+                updated = False
+                system_messages = []
                 
-                print(f"🔍 队伍更新: action={action}, npc_id={npc_id}")
-                print(f"🔍 当前队伍: {party}")
-                
-                if action == "add" and npc_id and npc_id not in party:
-                    party.append(npc_id)
-                    print(f"👥 NPC {npc_id} 加入队伍")
+                for update in party_updates:
+                    action = update.get("action")
+                    npc_id = update.get("npc_id")
                     
-                    # 加入队伍时，更新 NPC 的 location_id 为当前位置
+                    if not npc_id:
+                        continue
+                    
+                    # 获取 NPC 名称
+                    npc_name = npc_id
                     npc_index_path = get_npcs_dir() / "npc_index.json"
                     if npc_index_path.exists():
                         with open(npc_index_path, 'r', encoding='utf-8') as f:
                             npc_index = json.load(f)
-                        
-                        for npc in npc_index.get("npcs", []):
-                            if npc.get("id") == npc_id:
-                                old_location = npc.get("location_id")
-                                npc["location_id"] = request.scene
-                                npc["is_following"] = True  # 标记为跟随状态
-                                print(f"📍 队友 {npc.get('name')} 位置从 {old_location} 更新为 {request.scene}")
-                                break
-                        
-                        with open(npc_index_path, 'w', encoding='utf-8') as f:
-                            json.dump(npc_index, f, ensure_ascii=False, indent=2)
+                            for npc in npc_index.get("npcs", []):
+                                if npc.get("id") == npc_id:
+                                    npc_name = npc.get("name", npc_id)
+                                    break
                     
-                elif action == "remove" and npc_id and npc_id in party:
-                    party.remove(npc_id)
-                    print(f"👥 NPC {npc_id} 离开队伍")
+                    if action == "add" and npc_id not in party:
+                        party.append(npc_id)
+                        print(f"👥 NPC {npc_id} 加入队伍")
+                        system_messages.append(f"✨ {npc_name} 加入了队伍！")
+                        updated = True
+                        
+                        # 更新 NPC 的 location_id（使用 ID 而不是名称）
+                        if npc_index_path.exists():
+                            with open(npc_index_path, 'r', encoding='utf-8') as f:
+                                npc_index = json.load(f)
+                            
+                            for npc in npc_index.get("npcs", []):
+                                if npc.get("id") == npc_id:
+                                    npc["location_id"] = current_location_id
+                                    npc["is_following"] = True
+                                    print(f"📍 队友 {npc.get('name')} 位置更新为 {current_location_id} ({request.scene})")
+                                    break
+                            
+                            with open(npc_index_path, 'w', encoding='utf-8') as f:
+                                json.dump(npc_index, f, ensure_ascii=False, indent=2)
                     
-                    # 离队时，可以选择将 NPC 放回当前场景或原位置
-                    npc_index_path = get_npcs_dir() / "npc_index.json"
-                    if npc_index_path.exists():
-                        with open(npc_index_path, 'r', encoding='utf-8') as f:
-                            npc_index = json.load(f)
+                    elif action == "remove" and npc_id in party:
+                        party.remove(npc_id)
+                        print(f"👥 NPC {npc_id} 离开队伍")
+                        system_messages.append(f"👋 {npc_name} 离开了队伍。")
+                        updated = True
                         
-                        for npc in npc_index.get("npcs", []):
-                            if npc.get("id") == npc_id:
-                                # 离队后留在当前场景
-                                npc["location_id"] = request.scene
-                                npc["is_following"] = False
-                                print(f"📍 队友 {npc.get('name')} 离队，留在 {request.scene}")
-                                break
-                        
-                        with open(npc_index_path, 'w', encoding='utf-8') as f:
-                            json.dump(npc_index, f, ensure_ascii=False, indent=2)
+                        # 离队时更新位置（使用 ID 而不是名称）
+                        if npc_index_path.exists():
+                            with open(npc_index_path, 'r', encoding='utf-8') as f:
+                                npc_index = json.load(f)
+                            
+                            for npc in npc_index.get("npcs", []):
+                                if npc.get("id") == npc_id:
+                                    npc["location_id"] = current_location_id
+                                    npc["is_following"] = False
+                                    print(f"📍 队友 {npc.get('name')} 离队，位置更新为 {current_location_id} ({request.scene})")
+                                    break
+                            
+                            with open(npc_index_path, 'w', encoding='utf-8') as f:
+                                json.dump(npc_index, f, ensure_ascii=False, indent=2)
                 
-                character["party"] = party
-                save_character(request.character_id, character)
-                print(f"🔍 保存后队伍: {character.get('party')}")
+                if updated:
+                    character["party"] = party
+                    save_character(request.character_id, character)
+                    
+                    # 添加系统消息到对话历史
+                    for msg in system_messages:
+                        system_entry = {
+                            "speaker": "系统",
+                            "content": msg,
+                            "scene": request.scene,
+                            "is_dead": False,
+                            "timestamp": datetime.now().isoformat(),
+                            "game_hour": character.get("time", {}).get("current_hour", 0)
+                        }
+                        character.setdefault("conversation_history", []).append(system_entry)
+                        save_character(request.character_id, character)
             
             # 处理场景切换
             new_location_data = result.get("new_location")
@@ -550,7 +575,7 @@ async def npc_dialogue(request: NPCDialogueRequest):
     worldview = get_world_worldview()
     
     # 获取 NPC 数据
-    from backend.world_manager import get_npcs_dir
+    from ..world_manager import get_npcs_dir
     npc_index_path = get_npcs_dir() / "npc_index.json"
     npc_data = None
     if npc_index_path.exists():
@@ -562,10 +587,9 @@ async def npc_dialogue(request: NPCDialogueRequest):
                     break
     
     npc_profile = npc_data.get("profile", {}) if npc_data else {}
-    npc_info = f"- 名称：{request.npc_name}\n"
-    npc_info += f"- 身份：{npc_profile.get('identity', '普通人')}\n"
-    npc_info += f"- 性格：{npc_profile.get('personality', '未知')}\n"
-    npc_info += f"- 背景：{npc_profile.get('background', '未知')}"
+    npc_info = f"- id: {request.npc_id} | 名称: {request.npc_name} | 身份: {npc_profile.get('identity', '普通人')}"
+    if npc_profile.get("description"):
+        npc_info += f"\n  外貌性格：{npc_profile.get('description')}"
     
     profile = character.get("profile", {})
     player_info = f"- 名称：{request.player_name}\n"
@@ -582,17 +606,38 @@ async def npc_dialogue(request: NPCDialogueRequest):
     if active_tasks:
         task_list = []
         for task in active_tasks:
-            task_list.append(f"- ID: {task.get('id')} | 任务名称: {task.get('name')} | 描述: {task.get('description')} | 优先级: {task.get('priority', 100)}")
+            task_list.append(f"- ID: {task.get('id')} | 名称: [{task.get('name')}] | 描述: {task.get('description')} | 优先级: {task.get('priority', 100)}")
         active_tasks_text = "\n".join(task_list)
     else:
         active_tasks_text = "（无活跃任务）"
     
-    # 解析用户输入（可能包含动作和语言）
+    # 获取队伍信息
+    party_members = character.get("party", [])
+    party_text = ""
+    if party_members:
+        party_names = []
+        # 加载 NPC 索引以获取名称
+        npc_dict = {}
+        if npc_index_path.exists():
+            with open(npc_index_path, 'r', encoding='utf-8') as f:
+                npc_index_data = json.load(f)
+                for npc in npc_index_data.get("npcs", []):
+                    npc_dict[npc.get("id")] = npc.get("name")
+        
+        for npc_id in party_members:
+            if npc_id in npc_dict:
+                party_names.append(npc_dict[npc_id])
+            else:
+                party_names.append(npc_id)
+        party_text = f"当前队伍成员: {', '.join(party_names)}"
+    else:
+        party_text = "当前没有队友"
+    
+    # 解析用户输入
     user_input_text = request.user_input
     action = ""
     speech = ""
     
-    # 解析 【动作】xxx 和 【语言】"xxx" 格式
     if '【动作】' in user_input_text:
         action_match = re.search(r'【动作】(.*?)(?:\n|$)', user_input_text)
         if action_match:
@@ -603,16 +648,13 @@ async def npc_dialogue(request: NPCDialogueRequest):
         if speech_match:
             speech = speech_match.group(1).strip()
         else:
-            # 如果没有引号，尝试直接提取
             speech_match2 = re.search(r'【语言】(.*?)(?:\n|$)', user_input_text)
             if speech_match2:
                 speech = speech_match2.group(1).strip()
     
-    # 如果没有解析到动作和语言，使用原始输入
     if not action and not speech:
         speech = user_input_text
     
-    # 构建发送给 AI 的用户输入文本
     if request.is_greeting:
         user_input_display = f"（{request.player_name} 开始与 {request.npc_name} 对话）"
     elif request.is_continue:
@@ -644,23 +686,26 @@ async def npc_dialogue(request: NPCDialogueRequest):
         user_input=user_input_display,
         npc_name=request.npc_name,
         current_relationships=current_relationships,
-        active_tasks=active_tasks_text
+        active_tasks=active_tasks_text,
+        party_info=party_text
     )
+    
     if DEBUG:
         print("\n" + "="*80)
         print("📤 [NPC对话] 发送给AI的Prompt:")
         print("="*80)
         print(prompt)
         print("="*80)
-
+    
     response = call_ai(prompt, temperature=0.8)
-
+    
     if DEBUG:
         print("\n" + "="*80)
         print("📥 [NPC对话] AI原始响应:")
         print("="*80)
         print(response)
         print("="*80)
+    
     cleaned = clean_json_response(response)
     
     try:
@@ -683,14 +728,12 @@ async def npc_dialogue(request: NPCDialogueRequest):
                 info = update.get("info", "")
                 
                 if action_type == "update" or action_type == "complete":
-                    # 更新活跃任务，保持原有的 priority
                     for task in active_tasks:
                         if task.get("id") == task_id:
                             task["description"] = info
                             tasks_updated = True
                             break
                     
-                    # 如果是完成状态，移动到已完成列表
                     if action_type == "complete":
                         completed_task = None
                         for i, task in enumerate(active_tasks):
@@ -705,7 +748,6 @@ async def npc_dialogue(request: NPCDialogueRequest):
                             tasks_data["completed_tasks"].append(completed_task)
                 
                 elif action_type == "add":
-                    # 添加新任务
                     priority = update.get("priority", 100)
                     priority = max(1, min(1000, priority))
                     new_task = {
@@ -720,22 +762,107 @@ async def npc_dialogue(request: NPCDialogueRequest):
                     tasks_updated = True
                 
                 elif action_type == "update_priority":
-                    # 更新任务优先级
                     for task in active_tasks:
                         if task.get("id") == task_id:
                             new_priority = update.get("priority", 100)
                             new_priority = max(1, min(1000, new_priority))
                             task["priority"] = new_priority
                             tasks_updated = True
-                            print(f"📋 任务优先级已更新: {task.get('name')} -> {new_priority}")
                             break
             
-            # 按优先级排序活跃任务
             if tasks_updated:
                 active_tasks.sort(key=lambda x: x.get("priority", 100))
                 tasks_data["active_tasks"] = active_tasks
                 save_tasks(request.character_id, tasks_data)
                 print(f"📋 任务数据已更新 (NPC对话)")
+        
+        # 获取当前场景的地点 ID（用于队伍更新）
+        lm = get_location_manager(get_locations_dir())
+        current_location = lm.get_location_by_name(request.scene)
+        current_location_id = current_location.id if current_location else request.scene
+        
+        # 处理队伍更新（数组格式）
+        party_updates = result.get("party_updates", [])
+        if party_updates:
+            party = character.get("party", [])
+            updated = False
+            system_messages = []
+            
+            for update in party_updates:
+                action_type = update.get("action")
+                npc_id = update.get("npc_id")
+                
+                if not npc_id:
+                    continue
+                
+                # 获取 NPC 名称
+                npc_name = npc_id
+                if npc_index_path.exists():
+                    with open(npc_index_path, 'r', encoding='utf-8') as f:
+                        npc_index_data = json.load(f)
+                        for npc in npc_index_data.get("npcs", []):
+                            if npc.get("id") == npc_id:
+                                npc_name = npc.get("name", npc_id)
+                                break
+                
+                if action_type == "add" and npc_id not in party:
+                    party.append(npc_id)
+                    print(f"👥 NPC {npc_id} 加入队伍 (NPC对话)")
+                    system_messages.append(f"✨ {npc_name} 加入了队伍！")
+                    updated = True
+                    
+                    # 更新 NPC 的 location_id（使用 ID 而不是名称）
+                    if npc_index_path.exists():
+                        with open(npc_index_path, 'r', encoding='utf-8') as f:
+                            npc_index_data = json.load(f)
+                        
+                        for npc in npc_index_data.get("npcs", []):
+                            if npc.get("id") == npc_id:
+                                npc["location_id"] = current_location_id
+                                npc["is_following"] = True
+                                print(f"📍 队友 {npc.get('name')} 位置更新为 {current_location_id} ({request.scene})")
+                                break
+                        
+                        with open(npc_index_path, 'w', encoding='utf-8') as f:
+                            json.dump(npc_index_data, f, ensure_ascii=False, indent=2)
+                
+                elif action_type == "remove" and npc_id in party:
+                    party.remove(npc_id)
+                    print(f"👥 NPC {npc_id} 离开队伍 (NPC对话)")
+                    system_messages.append(f"👋 {npc_name} 离开了队伍。")
+                    updated = True
+                    
+                    # 离队时更新位置（使用 ID 而不是名称）
+                    if npc_index_path.exists():
+                        with open(npc_index_path, 'r', encoding='utf-8') as f:
+                            npc_index_data = json.load(f)
+                        
+                        for npc in npc_index_data.get("npcs", []):
+                            if npc.get("id") == npc_id:
+                                npc["location_id"] = current_location_id
+                                npc["is_following"] = False
+                                print(f"📍 队友 {npc.get('name')} 离队，位置更新为 {current_location_id} ({request.scene})")
+                                break
+                        
+                        with open(npc_index_path, 'w', encoding='utf-8') as f:
+                            json.dump(npc_index_data, f, ensure_ascii=False, indent=2)
+            
+            if updated:
+                character["party"] = party
+                save_character(request.character_id, character)
+                
+                # 添加系统消息到对话历史
+                for msg in system_messages:
+                    system_entry = {
+                        "speaker": "系统",
+                        "content": msg,
+                        "scene": request.scene,
+                        "is_dead": False,
+                        "timestamp": datetime.now().isoformat(),
+                        "game_hour": character.get("time", {}).get("current_hour", 0)
+                    }
+                    character.setdefault("conversation_history", []).append(system_entry)
+                    save_character(request.character_id, character)
         
         if description and description.strip().startswith('{') and '"description"' in description:
             try:
@@ -752,20 +879,7 @@ async def npc_dialogue(request: NPCDialogueRequest):
     except json.JSONDecodeError as e:
         print(f"❌ JSON 解析失败: {e}")
         print(f"原始响应: {response}")
-        print(f"清理后: {cleaned}")
-        # 尝试修复常见问题：确保键名用双引号
-        import re
-        # 尝试修复：将不带引号的键名加上引号
-        fixed = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', cleaned)
-        try:
-            result = json.loads(fixed)
-            print("✅ 自动修复成功")
-        except:
-            # 返回默认响应，不让前端出错
-            return {
-                "description": "（AI抽疯）‘抱歉，刚才走神了。你说了什么？’",
-                "exit_dialogue": False
-            }
+        return {"description": response, "exit_dialogue": False}
 
 @router.post("/system_helper")
 async def system_helper(request: SystemHelperRequest):

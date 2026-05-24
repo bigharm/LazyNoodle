@@ -234,6 +234,11 @@ export async function callAIAndRespond(userInput) {
     } finally {
         state.isWaitingForAI = false;
         updateInputsDisabled(state.currentSession.isDead);
+        const { renderPartyList } = await import('../ui/render.js');
+        await renderPartyList();
+        // 刷新任务面板
+        const { refreshTasksPanel } = await import('../ui/render.js');
+        await refreshTasksPanel();
     }
 }
 
