@@ -200,7 +200,8 @@ async def load_character_endpoint(request: LoadCharacterRequest):
 @router.get("/list_characters")
 async def list_characters_endpoint():
     """列出所有角色"""
-    return {"characters": get_all_characters()}
+    characters = get_all_characters()
+    return {"characters": characters}
 
 
 @router.get("/characters")

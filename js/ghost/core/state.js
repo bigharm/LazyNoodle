@@ -13,7 +13,8 @@ export const GhostState = {
         resources: {},
         reputation: {},
         currentGoals: [],
-        activeTasks: []
+        activeTasks: [],
+        party: []
     },
     
     // 聊天历史
@@ -38,6 +39,10 @@ export const GhostState = {
     tempCharacterInput: "",
     tempCharacterProfile: null,
     
+    // 上下文长度配置
+    contextLength: 200,
+    contextLengthOptions: [50, 100, 200, 300, 500],
+    
     // 方法
     reset() {
         this.currentSession = {
@@ -50,7 +55,8 @@ export const GhostState = {
             resources: {},
             reputation: {},
             currentGoals: [],
-            activeTasks: []
+            activeTasks: [],
+            party: []
         };
         this.chatHistory = [];
         this.isWaitingForAI = false;
@@ -60,6 +66,12 @@ export const GhostState = {
         this.tempCharacterInput = "";
         this.tempCharacterProfile = null;
         this.resetTasks();
+        // 注意：不要在这里调用 loadContextLength，改为在初始化后手动调用
+    },
+    
+    // 初始化配置（需要在 reset 后单独调用）
+    initConfig() {
+        this.loadContextLength();
     },
     
     updateSession(data) {
@@ -108,8 +120,26 @@ export const GhostState = {
         if (task) {
             task.description = newDescription;
         }
+    },
+    
+    // 上下文长度相关方法
+    setContextLength(length) {
+        if (this.contextLengthOptions.includes(length)) {
+            this.contextLength = length;
+            localStorage.setItem('lazynoodle_context_length', length);
+            console.log(`📝 上下文长度已设置为: ${length} 条`);
+        }
+    },
+    
+    loadContextLength() {
+        const saved = localStorage.getItem('lazynoodle_context_length');
+        if (saved && this.contextLengthOptions.includes(parseInt(saved))) {
+            this.contextLength = parseInt(saved);
+        }
+        return this.contextLength;
     }
 };
 
-// 导出单例
+// 导出单例，并初始化配置
 export const state = GhostState;
+state.loadContextLength();  // 在导出后立即初始化

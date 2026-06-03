@@ -16,8 +16,9 @@ a = Analysis(
         ('css', 'css'),
         ('index.html', '.'),
         ('lazynoodle.png', '.'),
-        ('worlds', 'worlds'),
+        #('worlds', 'worlds'),
         ('.env.example', '.'),
+        ('backend', 'backend'),
     ],
     hiddenimports=[
         'uvicorn',

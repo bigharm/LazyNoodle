@@ -3,6 +3,7 @@
 
 import json
 import sys
+import re
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -22,7 +23,9 @@ from backend.world_manager import (
 from backend.location_manager import get_location_manager
 from backend.services.ai_service import call_ai, clean_json_response, call_ai_json
 from backend.services.relationship_service import update_relationships, get_current_relationships
-from backend.config import PROMPTS_DIR,DEBUG
+from backend.config import PROMPTS_DIR, DEBUG, SUMMARIZE_CONFIG
+from backend.services.summarize_service import build_ai_context, get_summary_prompt, format_messages_for_summary, get_last_summary_end_index, update_summaries
+from backend.services.archive_service import archive_old_messages
 
 router = APIRouter()
 
@@ -75,6 +78,15 @@ class AppendConversationRequest(BaseModel):
     is_dead: bool = False
 
 
+# ========== 总结配置 ==========
+SUMMARY_CONFIG = {
+    "level1_size": 50,      # 第一层总结粒度（条数）
+    "level2_size": 10,      # 第二层总结粒度（多少个第一层总结）
+    "keep_recent_count": 30, # 保留的最近原始对话条数
+    "keep_recent_summaries": 1,  # 保留的最近第一层总结数量
+}
+
+
 # ========== 辅助函数 ==========
 def load_prompt(prompt_name: str) -> str:
     """加载 prompt 模板"""
@@ -85,18 +97,59 @@ def load_prompt(prompt_name: str) -> str:
     return ""
 
 
-def format_history_for_ai(history: List[Dict], max_count: int = 20) -> str:
-    """格式化历史对话供 AI 使用"""
-    if not history:
-        return "（无历史记录）"
+def format_history_with_summaries(character: Dict) -> str:
+    """使用总结构建历史上下文"""
+    # 1. 高层总结（所有）
+    high_summaries = character.get("high_level_summaries", [])
+    high_summary_text = ""
+    if high_summaries:
+        high_summary_text = "## 历史概要\n\n"
+        for hs in high_summaries:
+            high_summary_text += f"- {hs['content']}\n"
+        high_summary_text += "\n"
     
-    lines = []
-    for h in history[-max_count:]:
-        speaker = h.get("speaker", "未知")
-        content = h.get("content", "")
-        lines.append(f"{speaker}: {content}")
+    # 2. 最近的第一层总结
+    level1_summaries = character.get("conversation_summaries", [])
+    recent_summaries = level1_summaries[-SUMMARY_CONFIG["keep_recent_summaries"]:]
+    recent_summary_text = ""
+    if recent_summaries:
+        recent_summary_text = "## 近期进展\n\n"
+        for rs in recent_summaries:
+            recent_summary_text += f"{rs['content']}\n\n"
     
-    return "\n".join(lines)
+    # 3. 最近的原始对话
+    history = character.get("conversation_history", [])
+    recent_messages = history[-SUMMARY_CONFIG["keep_recent_count"]:]
+    recent_messages_text = ""
+    if recent_messages:
+        recent_messages_text = "## 最近对话\n\n"
+        for msg in recent_messages:
+            content = msg.get("content", "")
+            recent_messages_text += f"{content}\n"
+    
+    # 4. 组合
+    context = high_summary_text + recent_summary_text + recent_messages_text
+    
+    if not context:
+        context = "（无历史记录）"
+    
+    return context
+
+
+def get_last_summary_end_index(character: Dict) -> int:
+    """获取最后一层总结的结束索引"""
+    summaries = character.get("conversation_summaries", [])
+    if summaries:
+        return summaries[-1]["end_index"] + 1
+    return 0
+
+
+def get_last_high_summary_summary_count(character: Dict) -> int:
+    """获取最后一层高层总结覆盖的 summary 数量"""
+    high_summaries = character.get("high_level_summaries", [])
+    if high_summaries:
+        return len(high_summaries[-1].get("summary_ids", []))
+    return 0
 
 
 def format_locations_for_ai() -> str:
@@ -138,15 +191,13 @@ def format_npcs_for_ai(npcs: List[Dict]) -> str:
     lines = []
     for npc in npcs:
         profile = npc.get("profile", {})
-        # 添加 id 信息
         lines.append(f"- id: {npc.get('id')} | 名称: {npc.get('name')} | 身份: {profile.get('identity', '普通人')}")
         if profile.get("description"):
             lines.append(f"  外貌性格：{profile.get('description')}")
     return "\n".join(lines)
 
 
-# ========== API 端点 ==========
-
+# ========== 环境交互 API ==========
 @router.post("/environment_interact")
 async def environment_interact(request: EnvironmentInteractRequest):
     """环境交互 - 核心 API"""
@@ -170,8 +221,9 @@ async def environment_interact(request: EnvironmentInteractRequest):
         
         worldview = get_world_worldview()
         scene_npcs = request.scene_npcs
-        history = character.get("conversation_history", [])
-        history_text = format_history_for_ai(history + request.history)
+        
+        # 使用总结构建历史上下文（替代原来的 format_history_for_ai）
+        history_text = build_ai_context(character)
         
         user_input_text = ""
         if request.user_input.get("action") and request.user_input.get("speech"):
@@ -210,28 +262,7 @@ async def environment_interact(request: EnvironmentInteractRequest):
         else:
             active_tasks_text = "（无活跃任务）"
         
-        # 获取队伍信息
-        party_members = character.get("party", [])
-        party_text = ""
-        if party_members:
-            party_names = []
-            # 加载 NPC 索引以获取名称
-            npc_index_path = get_npcs_dir() / "npc_index.json"
-            npc_dict = {}
-            if npc_index_path.exists():
-                with open(npc_index_path, 'r', encoding='utf-8') as f:
-                    npc_index = json.load(f)
-                    for npc in npc_index.get("npcs", []):
-                        npc_dict[npc.get("id")] = npc.get("name")
-            
-            for npc_id in party_members:
-                if npc_id in npc_dict:
-                    party_names.append(npc_dict[npc_id])
-                else:
-                    party_names.append(npc_id)
-            party_text = f"当前队伍成员: {', '.join(party_names)}"
-        else:
-            party_text = "当前没有队友"
+        party_text = "（队伍功能已禁用）"
         
         prompt = prompt_template.format(
             world_setting=worldview,
@@ -396,95 +427,6 @@ async def environment_interact(request: EnvironmentInteractRequest):
                     save_tasks(request.character_id, tasks_data)
                     print(f"📋 任务数据已更新")
             
-            # 获取当前场景的地点 ID（用于队伍更新）
-            lm = get_location_manager(get_locations_dir())
-            current_location = lm.get_location_by_name(request.scene)
-            current_location_id = current_location.id if current_location else request.scene
-            
-            # 处理队伍更新（数组格式）
-            party_updates = result.get("party_updates", [])
-            if party_updates:
-                party = character.get("party", [])
-                updated = False
-                system_messages = []
-                
-                for update in party_updates:
-                    action = update.get("action")
-                    npc_id = update.get("npc_id")
-                    
-                    if not npc_id:
-                        continue
-                    
-                    # 获取 NPC 名称
-                    npc_name = npc_id
-                    npc_index_path = get_npcs_dir() / "npc_index.json"
-                    if npc_index_path.exists():
-                        with open(npc_index_path, 'r', encoding='utf-8') as f:
-                            npc_index = json.load(f)
-                            for npc in npc_index.get("npcs", []):
-                                if npc.get("id") == npc_id:
-                                    npc_name = npc.get("name", npc_id)
-                                    break
-                    
-                    if action == "add" and npc_id not in party:
-                        party.append(npc_id)
-                        print(f"👥 NPC {npc_id} 加入队伍")
-                        system_messages.append(f"✨ {npc_name} 加入了队伍！")
-                        updated = True
-                        
-                        # 更新 NPC 的 location_id（使用 ID 而不是名称）
-                        if npc_index_path.exists():
-                            with open(npc_index_path, 'r', encoding='utf-8') as f:
-                                npc_index = json.load(f)
-                            
-                            for npc in npc_index.get("npcs", []):
-                                if npc.get("id") == npc_id:
-                                    npc["location_id"] = current_location_id
-                                    npc["is_following"] = True
-                                    print(f"📍 队友 {npc.get('name')} 位置更新为 {current_location_id} ({request.scene})")
-                                    break
-                            
-                            with open(npc_index_path, 'w', encoding='utf-8') as f:
-                                json.dump(npc_index, f, ensure_ascii=False, indent=2)
-                    
-                    elif action == "remove" and npc_id in party:
-                        party.remove(npc_id)
-                        print(f"👥 NPC {npc_id} 离开队伍")
-                        system_messages.append(f"👋 {npc_name} 离开了队伍。")
-                        updated = True
-                        
-                        # 离队时更新位置（使用 ID 而不是名称）
-                        if npc_index_path.exists():
-                            with open(npc_index_path, 'r', encoding='utf-8') as f:
-                                npc_index = json.load(f)
-                            
-                            for npc in npc_index.get("npcs", []):
-                                if npc.get("id") == npc_id:
-                                    npc["location_id"] = current_location_id
-                                    npc["is_following"] = False
-                                    print(f"📍 队友 {npc.get('name')} 离队，位置更新为 {current_location_id} ({request.scene})")
-                                    break
-                            
-                            with open(npc_index_path, 'w', encoding='utf-8') as f:
-                                json.dump(npc_index, f, ensure_ascii=False, indent=2)
-                
-                if updated:
-                    character["party"] = party
-                    save_character(request.character_id, character)
-                    
-                    # 添加系统消息到对话历史
-                    for msg in system_messages:
-                        system_entry = {
-                            "speaker": "系统",
-                            "content": msg,
-                            "scene": request.scene,
-                            "is_dead": False,
-                            "timestamp": datetime.now().isoformat(),
-                            "game_hour": character.get("time", {}).get("current_hour", 0)
-                        }
-                        character.setdefault("conversation_history", []).append(system_entry)
-                        save_character(request.character_id, character)
-            
             # 处理场景切换
             new_location_data = result.get("new_location")
             if new_location_data:
@@ -539,12 +481,15 @@ async def environment_interact(request: EnvironmentInteractRequest):
             else:
                 result["new_location"] = None
             
+            # ========== 触发总结（异步） ==========
+            # 检查是否需要生成总结
+            await update_summaries(request.character_id)
             return result
             
         except json.JSONDecodeError as e:
             print(f"❌ JSON 解析失败: {e}")
             return {
-                "description": response[:200] if response else "AI 响应解析失败",
+                "description": response if response else "AI 响应解析失败",
                 "is_dead": False,
                 "new_location": None
             }
@@ -555,10 +500,11 @@ async def environment_interact(request: EnvironmentInteractRequest):
         traceback.print_exc()
         raise HTTPException(status_code=422, detail=str(e))
 
+
+# ========== NPC 对话 API ==========
 @router.post("/npc_dialogue")
 async def npc_dialogue(request: NPCDialogueRequest):
     """NPC 对话 - 模拟 NPC 回应"""
-    import re
     print(f"💬 NPC 对话: {request.npc_name}, 玩家={request.player_name}")
     
     character = load_character(request.character_id)
@@ -575,7 +521,6 @@ async def npc_dialogue(request: NPCDialogueRequest):
     worldview = get_world_worldview()
     
     # 获取 NPC 数据
-    from ..world_manager import get_npcs_dir
     npc_index_path = get_npcs_dir() / "npc_index.json"
     npc_data = None
     if npc_index_path.exists():
@@ -597,7 +542,9 @@ async def npc_dialogue(request: NPCDialogueRequest):
     player_info += f"- 外貌：{profile.get('appearance', '普通')}\n"
     player_info += f"- 性格：{profile.get('personality', '平和')}"
     
-    history_text = format_history_for_ai(request.history)
+    # 使用总结构建历史上下文
+    history_text = build_ai_context(character)
+    
     scene_npcs_info = format_npcs_for_ai(request.scene_npcs) if request.scene_npcs else "（没有其他人在场）"
     current_relationships = get_current_relationships(character)
     
@@ -611,27 +558,7 @@ async def npc_dialogue(request: NPCDialogueRequest):
     else:
         active_tasks_text = "（无活跃任务）"
     
-    # 获取队伍信息
-    party_members = character.get("party", [])
-    party_text = ""
-    if party_members:
-        party_names = []
-        # 加载 NPC 索引以获取名称
-        npc_dict = {}
-        if npc_index_path.exists():
-            with open(npc_index_path, 'r', encoding='utf-8') as f:
-                npc_index_data = json.load(f)
-                for npc in npc_index_data.get("npcs", []):
-                    npc_dict[npc.get("id")] = npc.get("name")
-        
-        for npc_id in party_members:
-            if npc_id in npc_dict:
-                party_names.append(npc_dict[npc_id])
-            else:
-                party_names.append(npc_id)
-        party_text = f"当前队伍成员: {', '.join(party_names)}"
-    else:
-        party_text = "当前没有队友"
+    party_text = "（队伍功能已禁用）"
     
     # 解析用户输入
     user_input_text = request.user_input
@@ -776,94 +703,6 @@ async def npc_dialogue(request: NPCDialogueRequest):
                 save_tasks(request.character_id, tasks_data)
                 print(f"📋 任务数据已更新 (NPC对话)")
         
-        # 获取当前场景的地点 ID（用于队伍更新）
-        lm = get_location_manager(get_locations_dir())
-        current_location = lm.get_location_by_name(request.scene)
-        current_location_id = current_location.id if current_location else request.scene
-        
-        # 处理队伍更新（数组格式）
-        party_updates = result.get("party_updates", [])
-        if party_updates:
-            party = character.get("party", [])
-            updated = False
-            system_messages = []
-            
-            for update in party_updates:
-                action_type = update.get("action")
-                npc_id = update.get("npc_id")
-                
-                if not npc_id:
-                    continue
-                
-                # 获取 NPC 名称
-                npc_name = npc_id
-                if npc_index_path.exists():
-                    with open(npc_index_path, 'r', encoding='utf-8') as f:
-                        npc_index_data = json.load(f)
-                        for npc in npc_index_data.get("npcs", []):
-                            if npc.get("id") == npc_id:
-                                npc_name = npc.get("name", npc_id)
-                                break
-                
-                if action_type == "add" and npc_id not in party:
-                    party.append(npc_id)
-                    print(f"👥 NPC {npc_id} 加入队伍 (NPC对话)")
-                    system_messages.append(f"✨ {npc_name} 加入了队伍！")
-                    updated = True
-                    
-                    # 更新 NPC 的 location_id（使用 ID 而不是名称）
-                    if npc_index_path.exists():
-                        with open(npc_index_path, 'r', encoding='utf-8') as f:
-                            npc_index_data = json.load(f)
-                        
-                        for npc in npc_index_data.get("npcs", []):
-                            if npc.get("id") == npc_id:
-                                npc["location_id"] = current_location_id
-                                npc["is_following"] = True
-                                print(f"📍 队友 {npc.get('name')} 位置更新为 {current_location_id} ({request.scene})")
-                                break
-                        
-                        with open(npc_index_path, 'w', encoding='utf-8') as f:
-                            json.dump(npc_index_data, f, ensure_ascii=False, indent=2)
-                
-                elif action_type == "remove" and npc_id in party:
-                    party.remove(npc_id)
-                    print(f"👥 NPC {npc_id} 离开队伍 (NPC对话)")
-                    system_messages.append(f"👋 {npc_name} 离开了队伍。")
-                    updated = True
-                    
-                    # 离队时更新位置（使用 ID 而不是名称）
-                    if npc_index_path.exists():
-                        with open(npc_index_path, 'r', encoding='utf-8') as f:
-                            npc_index_data = json.load(f)
-                        
-                        for npc in npc_index_data.get("npcs", []):
-                            if npc.get("id") == npc_id:
-                                npc["location_id"] = current_location_id
-                                npc["is_following"] = False
-                                print(f"📍 队友 {npc.get('name')} 离队，位置更新为 {current_location_id} ({request.scene})")
-                                break
-                        
-                        with open(npc_index_path, 'w', encoding='utf-8') as f:
-                            json.dump(npc_index_data, f, ensure_ascii=False, indent=2)
-            
-            if updated:
-                character["party"] = party
-                save_character(request.character_id, character)
-                
-                # 添加系统消息到对话历史
-                for msg in system_messages:
-                    system_entry = {
-                        "speaker": "系统",
-                        "content": msg,
-                        "scene": request.scene,
-                        "is_dead": False,
-                        "timestamp": datetime.now().isoformat(),
-                        "game_hour": character.get("time", {}).get("current_hour", 0)
-                    }
-                    character.setdefault("conversation_history", []).append(system_entry)
-                    save_character(request.character_id, character)
-        
         if description and description.strip().startswith('{') and '"description"' in description:
             try:
                 inner_result = json.loads(description)
@@ -871,7 +710,7 @@ async def npc_dialogue(request: NPCDialogueRequest):
                 exit_dialogue = inner_result.get("exit_dialogue", exit_dialogue)
             except:
                 pass
-        
+        await update_summaries(request.character_id)
         return {
             "description": description,
             "exit_dialogue": exit_dialogue
@@ -881,6 +720,8 @@ async def npc_dialogue(request: NPCDialogueRequest):
         print(f"原始响应: {response}")
         return {"description": response, "exit_dialogue": False}
 
+
+# ========== 系统助手 API ==========
 @router.post("/system_helper")
 async def system_helper(request: SystemHelperRequest):
     """系统助手 - 帮助菜单（支持独立历史）"""
@@ -908,7 +749,6 @@ async def system_helper(request: SystemHelperRequest):
     
     npcs_data = request.extra_context.get("npcs") if request.extra_context else None
     if not npcs_data:
-        from backend.world_manager import get_npcs_dir
         npc_index_path = get_npcs_dir() / "npc_index.json"
         if npc_index_path.exists():
             with open(npc_index_path, 'r', encoding='utf-8') as f:
@@ -974,9 +814,6 @@ async def system_helper(request: SystemHelperRequest):
         task_generated = result.get("task_generated", False)
         new_task = result.get("task")
         
-        # 注意：这里不再自动保存任务
-        # 只返回任务信息，让前端确认
-        
     except json.JSONDecodeError:
         description = response[:200] if response else "系统助手无法处理你的请求"
         task_generated = False
@@ -1008,6 +845,8 @@ async def system_helper(request: SystemHelperRequest):
         "task_data": new_task
     }
 
+
+# ========== 其他 API ==========
 @router.post("/append_conversation")
 async def append_conversation(request: AppendConversationRequest):
     """添加对话记录"""
@@ -1029,15 +868,19 @@ async def append_conversation(request: AppendConversationRequest):
     
     character.setdefault("conversation_history", []).append(entry)
     
-    if len(character["conversation_history"]) > 500:
-        character["conversation_history"] = character["conversation_history"][-500:]
+    # 限制历史长度（保留最近 2000 条）
+    #if len(character["conversation_history"]) > 2000:
+    #    character["conversation_history"] = character["conversation_history"][-2000:]
     
     save_character(request.character_id, character)
+
+    archive_old_messages(character, request.character_id, 
+                     world_id=character.get("world_id"), 
+                     keep_count=2000)
     
     return {"status": "ok"}
 
 
-# ========== 辅助函数 ==========
 def format_locations_for_api(all_locations: Dict):
     """将 Location 对象格式化为 API 可返回的字典"""
     regions = []
@@ -1111,7 +954,8 @@ async def test_ai():
             "success": False,
             "message": f"AI API 调用失败: {str(e)}"
         }
-    
+
+
 @router.get("/tasks")
 async def get_tasks(character_id: str):
     """获取角色的任务数据"""
@@ -1122,6 +966,7 @@ async def get_tasks(character_id: str):
         "active_tasks": tasks_data.get("active_tasks", []),
         "completed_tasks": tasks_data.get("completed_tasks", [])
     }
+
 
 @router.post("/add_task")
 async def add_task(request: dict):
@@ -1138,12 +983,9 @@ async def add_task(request: dict):
     tasks_data = load_tasks(character_id)
     active_tasks = tasks_data.get("active_tasks", [])
     
-    # 获取优先级，默认100
     priority = task_info.get("priority", 100)
-    # 确保优先级在1-1000范围内
     priority = max(1, min(1000, priority))
     
-    # 创建新任务
     new_task = {
         "id": f"task_{int(datetime.now().timestamp())}_{len(active_tasks)}",
         "name": task_info.get("name", "新任务"),
@@ -1154,7 +996,6 @@ async def add_task(request: dict):
     }
     
     active_tasks.append(new_task)
-    # 按优先级排序（数值越小越优先）
     active_tasks.sort(key=lambda x: x.get("priority", 100))
     tasks_data["active_tasks"] = active_tasks
     save_tasks(character_id, tasks_data)
@@ -1176,15 +1017,11 @@ async def observe_npc(request: dict):
     if not character_id or not npc_name:
         raise HTTPException(status_code=400, detail="缺少必要参数")
     
-    # 获取角色信息（用于获取关系）
     character = load_character(character_id)
     current_relationships = get_current_relationships(character) if character else ""
     
-    # 获取世界观
     worldview = get_world_worldview()
     
-    # 获取NPC信息
-    from backend.world_manager import get_npcs_dir
     npc_index_path = get_npcs_dir() / "npc_index.json"
     npc_info = ""
     if npc_index_path.exists():
@@ -1198,7 +1035,6 @@ async def observe_npc(request: dict):
                     npc_info += f"- 描述：{profile.get('description', '暂无详细描述')}"
                     break
     
-    # 加载 prompt 模板
     prompt_template = load_prompt("observe_npc.txt")
     if not prompt_template:
         prompt_template = """{"description": "你静静地观察着{npc_name}，但没有发现什么特别之处。"}"""
@@ -1211,7 +1047,6 @@ async def observe_npc(request: dict):
         npc_name=npc_name
     )
     
-    # 调用AI
     response = call_ai(prompt, temperature=0.5)
     cleaned = clean_json_response(response)
     
@@ -1222,6 +1057,7 @@ async def observe_npc(request: dict):
         description = f"你静静地观察着{npc_name}，但没有发现什么特别之处。"
     
     return {"description": description}
+
 
 @router.post("/delete_task")
 async def delete_task(request: dict):
@@ -1239,7 +1075,6 @@ async def delete_task(request: dict):
     active_tasks = tasks_data.get("active_tasks", [])
     removed_tasks = tasks_data.get("removed_tasks", [])
     
-    # 查找并移动任务
     removed_task = None
     for i, task in enumerate(active_tasks):
         if task.get("id") == task_id:
@@ -1258,6 +1093,7 @@ async def delete_task(request: dict):
     else:
         raise HTTPException(status_code=404, detail="任务不存在")
 
+
 @router.post("/test_ai_with_key")
 async def test_ai_with_key(request: dict):
     """使用用户提供的 API Key 测试连接"""
@@ -1269,7 +1105,6 @@ async def test_ai_with_key(request: dict):
         return {"success": False, "message": "未提供 API Key"}
     
     try:
-        # 使用与 test_ai 完全相同的方式创建 client
         client = OpenAI(
             api_key=api_key,
             base_url=DEEPSEEK_BASE_URL
@@ -1290,6 +1125,7 @@ async def test_ai_with_key(request: dict):
         print(f"测试 API Key 错误: {type(e).__name__}: {e}")
         return {"success": False, "message": f"错误: {str(e)}"}
 
+
 @router.post("/update_api_key")
 async def update_api_key(request: dict):
     """更新 .env 文件中的 API Key"""
@@ -1300,15 +1136,11 @@ async def update_api_key(request: dict):
     if not new_api_key:
         raise HTTPException(status_code=400, detail="缺少 API Key")
     
-    # 获取 .env 文件路径
     if getattr(sys, 'frozen', False):
-        # 打包模式：exe 所在目录
         env_path = Path(sys.executable).parent / ".env"
     else:
-        # 开发模式：项目根目录
         env_path = Path(__file__).parent.parent.parent / ".env"
     
-    # 读取现有 .env 文件内容
     lines = []
     found = False
     
@@ -1316,7 +1148,6 @@ async def update_api_key(request: dict):
         with open(env_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
     
-    # 更新或添加 DEEPSEEK_API_KEY
     for i, line in enumerate(lines):
         if line.startswith("DEEPSEEK_API_KEY="):
             lines[i] = f"DEEPSEEK_API_KEY={new_api_key}\n"
@@ -1326,7 +1157,6 @@ async def update_api_key(request: dict):
     if not found:
         lines.append(f"DEEPSEEK_API_KEY={new_api_key}\n")
     
-    # 写回文件
     with open(env_path, 'w', encoding='utf-8') as f:
         f.writelines(lines)
     
@@ -1334,12 +1164,10 @@ async def update_api_key(request: dict):
     
     return {"status": "ok", "message": "API Key 已保存"}
 
+
 @router.get("/npc_info/{npc_id}")
 async def get_npc_info(npc_id: str):
     """根据 ID 获取 NPC 基本信息"""
-    from ..world_manager import get_npcs_dir
-    import json
-    
     npc_index_path = get_npcs_dir() / "npc_index.json"
     if npc_index_path.exists():
         with open(npc_index_path, 'r', encoding='utf-8') as f:
@@ -1349,3 +1177,37 @@ async def get_npc_info(npc_id: str):
                     return {"id": npc_id, "name": npc.get("name", npc_id)}
     return {"id": npc_id, "name": npc_id}
 
+
+@router.post("/edit_message")
+async def edit_message(request: dict):
+    """编辑历史消息"""
+    character_id = request.get("character_id")
+    message_index = request.get("message_index")
+    new_content = request.get("new_content")
+    
+    if not character_id or message_index is None or not new_content:
+        raise HTTPException(status_code=400, detail="缺少必要参数")
+    
+    character = load_character(character_id)
+    if not character:
+        raise HTTPException(status_code=404, detail="角色不存在")
+    
+    history = character.get("conversation_history", [])
+    
+    if message_index < 0 or message_index >= len(history):
+        raise HTTPException(status_code=400, detail="消息索引无效")
+    
+    # 只允许修改旁白消息
+    if history[message_index].get("speaker") != "旁白":
+        raise HTTPException(status_code=400, detail="只能修改旁白消息")
+    
+    # 更新内容
+    history[message_index]["content"] = new_content
+    history[message_index]["edited_at"] = datetime.now().isoformat()
+    history[message_index]["edited"] = True
+    
+    save_character(character_id, character)
+    
+    print(f"✏️ 已编辑消息 {message_index}: {new_content[:50]}...")
+    
+    return {"status": "ok", "message": "修改成功"}

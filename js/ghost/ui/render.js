@@ -26,10 +26,10 @@ export function renderChatHistory() {
     for (let i = 0; i < history.length; i++) {
         const msg = history[i];
         const isDead = msg.isDead === true;
+        const isLastAssistant = (msg.role === 'assistant' && i === history.length - 1);
         
         if (msg.role === 'user') {
             let displayContent = msg.content;
-            // 清理存储格式的标记
             displayContent = displayContent.replace(/^【语言】/, '');
             displayContent = displayContent.replace(/^【动作】/, '');
             
@@ -44,18 +44,19 @@ export function renderChatHistory() {
             const isDialogue = msg.isDialogue === true;
             const isSystemSpeaker = msg.speaker === '系统';
             
-            // 只有在对话模式下，且是最后一条NPC消息时，才考虑显示"不说话，让TA继续"按钮
-            // 并且只在等待AI时显示（让玩家可以选择不说话）
             const isLastNPCMessage = isDialogue && i === history.length - 1 && state.isInDialogue && !isSystemSpeaker;
             
             html += `
                 <div class="chat-message assistant-message ${isDead ? 'dead-message' : ''} ${isDialogue ? 'dialogue-message' : ''}" data-index="${i}">
                     <div class="chat-speaker">${isDead ? '💀' : (isDialogue ? '💬' : '📖')} ${escapeHtml(msg.speaker)}</div>
                     <div class="chat-content">${escapeHtml(msg.content)}</div>
-                    ${isLastNPCMessage && !state.isWaitingForAI ? `
+                    ${isLastNPCMessage && state.isWaitingForAI ? `
                         <div class="dialogue-buttons">
                             <button class="dialogue-continue-btn" data-npc-id="${state.currentDialogueNPC?.id || ''}" data-npc-name="${escapeHtml(state.currentDialogueNPC?.name || '')}">⏸ 不说话，让TA继续</button>
                         </div>
+                    ` : ''}
+                    ${isLastAssistant && msg.speaker === '旁白' ? `
+                        <button class="edit-msg-btn" data-index="${i}" data-content="${escapeHtml(msg.content)}" title="修改此消息">✏️</button>
                     ` : ''}
                 </div>
             `;
@@ -69,26 +70,110 @@ export function renderChatHistory() {
         }
     }
     
-    // 如果在对话模式下，在聊天区域底部添加固定的"结束对话"按钮
-    // 只有不在等待AI时，才显示按钮
-    if (state.isInDialogue && state.currentDialogueNPC && !state.isWaitingForAI) {
-        html += `
-            <div class="chat-footer">
-                <button class="end-dialogue-footer-btn">✕ 结束对话</button>
-            </div>
-        `;
-    } 
-    
     elements.chatMessages.innerHTML = html;
     
     // 绑定删除按钮事件
     bindDeleteButtons();
     // 绑定对话继续按钮
     bindDialogueButtons();
-    // 绑定结束对话按钮
-    bindEndDialogueButton();
+    // 绑定编辑按钮
+    bindEditButtons();
     
     scrollChatToBottom();
+}
+
+// 绑定编辑按钮
+function bindEditButtons() {
+    document.querySelectorAll('.edit-msg-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const index = parseInt(btn.dataset.index);
+            const originalContent = btn.dataset.content;
+            openEditDialog(index, originalContent);
+        });
+    });
+}
+
+// 打开编辑对话框
+function openEditDialog(index, originalContent) {
+    const dialog = document.createElement('div');
+    dialog.className = 'edit-dialog';
+    dialog.innerHTML = `
+        <div class="edit-dialog-header">
+            <span>✏️ 编辑旁白</span>
+            <button class="edit-dialog-close">✕</button>
+        </div>
+        <div class="edit-dialog-content">
+            <textarea id="editContent" rows="8" placeholder="修改旁白内容...">${escapeHtml(originalContent)}</textarea>
+        </div>
+        <div class="edit-dialog-buttons">
+            <button id="saveEditBtn" class="save-btn">💾 保存</button>
+            <button id="cancelEditBtn" class="cancel-btn">取消</button>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+    
+    // 关闭按钮
+    dialog.querySelector('.edit-dialog-close').addEventListener('click', () => {
+        dialog.remove();
+    });
+    
+    // 取消按钮
+    dialog.querySelector('#cancelEditBtn').addEventListener('click', () => {
+        dialog.remove();
+    });
+    
+    // 保存按钮
+    dialog.querySelector('#saveEditBtn').addEventListener('click', async () => {
+        const newContent = dialog.querySelector('#editContent').value.trim();
+        if (!newContent) {
+            showToast('内容不能为空', 1500);
+            return;
+        }
+        
+        if (newContent === originalContent) {
+            dialog.remove();
+            return;
+        }
+        
+        showLoading('保存中...');
+        
+        try {
+            // 调用后端 API 修改消息
+            const response = await fetch('/api/ghost/edit_message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    character_id: state.currentSession.characterId,
+                    message_index: index,
+                    new_content: newContent
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || '保存失败');
+            }
+            
+            // 更新本地状态
+            if (state.chatHistory[index]) {
+                state.chatHistory[index].content = newContent;
+            }
+            
+            // 重新渲染聊天区域
+            renderChatHistory();
+            scrollChatToBottom();
+            
+            showToast('✅ 保存成功', 2000);
+            dialog.remove();
+            
+        } catch (err) {
+            console.error('保存失败:', err);
+            showToast('❌ 保存失败: ' + err.message, 3000, 'error');
+        } finally {
+            hideLoading();
+        }
+    });
 }
 
 // 绑定结束对话按钮
@@ -510,11 +595,9 @@ function escapeHtml(text) {
 
 // 渲染队伍信息（简单字符串形式）
 export async function renderPartyList() {
-    console.log('调用renderPartyList');
     if (!elements.partyInfo) return;
     
     const party = state.currentSession.party || [];
-    console.log('🔍 渲染队伍, party:', party);
     
     if (party.length === 0) {
         elements.partyInfo.innerHTML = '暂无队友';

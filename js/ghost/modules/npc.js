@@ -140,7 +140,7 @@ async function showNPCConfirmDialog(profile, originalDescription, parentDialog) 
         }
         
         // 生成唯一ID
-        const npcId = `npc_${Date.now()}_${profile.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')}`;
+        const npcId = `npc_${Date.now()}`;
         
         const npcData = {
             id: npcId,
@@ -274,7 +274,7 @@ async function importNPCFromFile() {
                     }
                 } catch (err) {}
                 
-                const npcId = `npc_imported_${Date.now()}_${profile.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')}`;
+                const npcId = `npc_${Date.now()}`;
                 const npcData = {
                     id: npcId,
                     name: profile.name,

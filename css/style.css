@@ -1982,3 +1982,260 @@ body {
     align-items: center;
     gap: 6px;
 }
+
+@media (max-width: 768px) {
+    /* 重置 .app 容器 */
+    .app {
+        display: block !important;
+        min-height: auto !important;
+        height: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* 重置主内容区域 */
+    .main-content {
+        min-height: auto !important;
+        height: auto !important;
+        display: block !important;
+    }
+    
+    /* 覆盖幽灵面板的 fixed 定位 */
+    .ghost-panel {
+        position: relative !important;
+        overflow-y: auto !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    /* 幽灵主布局 */
+    .ghost-main {
+        height: auto !important;
+        overflow-y: visible !important;
+        padding: 15px;
+    }
+    
+    /* 侧边栏完整显示 */
+    .sidebar {
+        width: 100%;
+        max-height: none !important;
+        overflow-y: visible !important;
+    }
+    
+    /* 所有列表完整显示 */
+    .locations-list,
+    .npc-list,
+    .tasks-list,
+    .party-list {
+        max-height: none !important;
+        overflow-y: visible !important;
+    }
+    
+    /* 聊天区域 */
+    .chat-area {
+        min-height: 350px;
+    }
+    
+    .chat-messages {
+        max-height: 40vh;
+        overflow-y: auto;
+    }
+    
+    /* 输入框 */
+    .input-area textarea {
+        font-size: 16px;
+        padding: 8px;
+    }
+    
+    .send-btn {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    
+    /* 聊天消息 */
+    .chat-message {
+        max-width: 90%;
+    }
+    
+    .chat-content {
+        font-size: 14px;
+        word-break: break-word;
+    }
+    
+    /* NPC 卡片 */
+    .npc-actions {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .npc-actions button {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+    
+    /* 头部 */
+    .ghost-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    
+    .char-info {
+        font-size: 12px;
+        gap: 8px;
+    }
+    
+    .time-info {
+        font-size: 11px;
+    }
+    
+    .header-buttons {
+        gap: 6px;
+    }
+    
+    .ghost-btn {
+        padding: 4px 10px;
+        font-size: 12px;
+    }
+    
+    /* 顶部栏 */
+    .top-bar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        margin: 0;
+        border-radius: 0;
+    }
+}
+
+/* 上下文长度选择器 */
+.context-length-select {
+    background: #2a2a44;
+    border: 1px solid #4a4a6a;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+}
+
+.context-length-select:hover {
+    background: #3a3a5a;
+}
+
+.context-length-select:focus {
+    border-color: #88ffaa;
+}
+
+/* 编辑按钮 */
+.edit-msg-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.chat-message:hover .edit-msg-btn {
+    opacity: 0.7;
+}
+
+.edit-msg-btn:hover {
+    color: #ffaa66;
+    opacity: 1;
+}
+
+/* 编辑对话框 */
+.edit-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    max-width: 90%;
+    background: #1a1a2a;
+    border: 1px solid #4a4a6a;
+    border-radius: 16px;
+    z-index: 20001;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.edit-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #2a2a44;
+    border-radius: 16px 16px 0 0;
+    font-weight: bold;
+    color: #ffaa66;
+}
+
+.edit-dialog-close {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.edit-dialog-close:hover {
+    color: #ff6666;
+}
+
+.edit-dialog-content {
+    padding: 16px;
+}
+
+.edit-dialog-content textarea {
+    width: 100%;
+    background: #0a0a12;
+    border: 1px solid #4a4a6a;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+}
+
+.edit-dialog-content textarea:focus {
+    outline: none;
+    border-color: #88ffaa;
+}
+
+.edit-dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 0 16px 16px 16px;
+}
+
+.edit-dialog-buttons .save-btn {
+    background: #2a6a2a;
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.edit-dialog-buttons .cancel-btn {
+    background: #4a4a6a;
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.edit-dialog-buttons button:hover {
+    transform: translateY(-1px);
+}

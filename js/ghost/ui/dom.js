@@ -3,6 +3,7 @@ import { state } from '../core/state.js';
 import { events, Events } from '../core/events.js';
 import { handleSendMessage } from '../modules/chat.js';
 import { openNPCCreationDialog } from '../modules/npc.js';
+import { showToast } from './components.js';
 
 // DOM元素引用
 export const elements = {
@@ -12,16 +13,16 @@ export const elements = {
     speechInput: null,
     sendBtn: null,
     locationsList: null,
-    tasksList: null, 
     npcList: null,
+    tasksList: null,
     charName: null,
     charIdentity: null,
     charScene: null,
     charStatus: null,
     timeDisplay: null,
-    addNPCBtn: null,
     partyInfo: null,
-    deleteNPCBtn: null
+    addNPCBtn: null,
+    contextLengthSelect: null
 };
 
 // 创建幽灵模式面板
@@ -62,20 +63,31 @@ export function createGhostPanel() {
                     <div class="section-title">📍 已解锁地点</div>
                     <div class="locations-list" id="locationsList"></div>
                 </div>
-                <!-- 队伍成员显示 -->
+                <div class="sidebar-section">
+                    <div class="section-title">👥 周围的人</div>
+                    <div class="npc-list" id="npcList"></div>
+                </div>
                 <div class="sidebar-section">
                     <div class="section-title">👥 我的队伍</div>
                     <div class="party-info" id="partyInfo">暂无队友</div>
                 </div>
                 <div class="sidebar-section">
-                    <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>👥 周围的人</span>
-                        <div style="display: flex; gap: 8px;">
-                            <button id="addNPCBtn" class="sidebar-action-btn" title="添加NPC">➕</button>
-                            <button id="deleteNPCBtn" class="sidebar-action-btn" title="删除当前场景NPC" style="display: none;">🗑️</button>
+                    <div class="section-title">🤖 系统助手</div>
+                    <div class="npc-list" style="margin-bottom: 8px;">
+                        <div class="npc-item system-helper-item" data-npc-id="system_helper" data-npc-name="系统助手">
+                            <div class="npc-icon">🤖</div>
+                            <div class="npc-info">
+                                <div class="npc-name">系统助手</div>
+                                <div class="npc-identity">游戏助手 / 帮助菜单</div>
+                            </div>
+                            <div class="npc-actions">
+                                <button class="system-helper-btn">💬 对话</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="npc-list" id="npcList"></div>
+                    <div style="text-align: right; margin-top: 4px;">
+                        <button id="addNPCBtn" class="sidebar-action-btn" title="创建新NPC">➕</button>
+                    </div>
                 </div>
                 <div class="sidebar-section">
                     <div class="section-title">📋 当前任务</div>
@@ -95,23 +107,33 @@ export function createGhostPanel() {
     elements.sendBtn = document.getElementById('sendGhostBtn');
     elements.locationsList = document.getElementById('locationsList');
     elements.npcList = document.getElementById('npcList');
+    elements.tasksList = document.getElementById('tasksList');
     elements.charName = document.getElementById('charName');
     elements.charIdentity = document.getElementById('charIdentity');
     elements.charScene = document.getElementById('charScene');
     elements.charStatus = document.getElementById('charStatus');
     elements.timeDisplay = document.getElementById('timeDisplay');
-    elements.tasksList = document.getElementById('tasksList');
-    elements.addNPCBtn = document.getElementById('addNPCBtn');
-    elements.deleteNPCBtn = document.getElementById('deleteNPCBtn');
     elements.partyInfo = document.getElementById('partyInfo');
+    elements.addNPCBtn = document.getElementById('addNPCBtn');
+    elements.contextLengthSelect = document.getElementById('contextLengthSelect');
     
     return panel;
 }
 
 // 绑定面板事件
-export function bindPanelEvents() {
+export async function bindPanelEvents() {
     if (elements.sendBtn) {
         elements.sendBtn.addEventListener('click', handleSendMessage);
+    }
+    
+    // 上下文长度选择器
+    if (elements.contextLengthSelect) {
+        elements.contextLengthSelect.value = state.contextLength;
+        elements.contextLengthSelect.addEventListener('change', (e) => {
+            const newLength = parseInt(e.target.value);
+            state.setContextLength(newLength);
+            showToast(`AI记忆已调整为 ${newLength} 条`, 1500);
+        });
     }
     
     // 测试AI按钮
@@ -134,6 +156,23 @@ export function bindPanelEvents() {
         });
     }
     
+    // 添加NPC按钮
+    if (elements.addNPCBtn) {
+        elements.addNPCBtn.addEventListener('click', () => {
+            openNPCCreationDialog();
+        });
+    }
+    
+    // 系统助手按钮
+    const systemHelperBtn = document.querySelector('.system-helper-btn');
+    if (systemHelperBtn) {
+        systemHelperBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { openSystemHelperDialog } = await import('../modules/helper.js');
+            openSystemHelperDialog();
+        });
+    }
+    
     // 快捷键
     if (elements.actionInput) {
         elements.actionInput.addEventListener('keypress', (e) => {
@@ -152,21 +191,7 @@ export function bindPanelEvents() {
             }
         });
     }
-
-    // 添加NPC按钮
-    if (elements.addNPCBtn) {
-        elements.addNPCBtn.addEventListener('click', () => {
-            openNPCCreationDialog();
-        });
-    }
-
-    // 删除NPC按钮（暂时隐藏，后续可实现）
-    // if (elements.deleteNPCBtn) {
-    //     elements.deleteNPCBtn.addEventListener('click', () => {
-    //         // 实现删除NPC功能
-    //     });
-    // }
-    }
+}
 
 // 滚动聊天到底部
 export function scrollChatToBottom() {

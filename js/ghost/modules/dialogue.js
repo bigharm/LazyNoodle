@@ -187,7 +187,7 @@ export async function callAIForDialogue(action, speech, isGreeting = false, isCo
     const loadingIndicator = showLoadingIndicator();
     
     try {
-        const historyForAI = state.chatHistory.slice(-15).map(msg => ({
+        const historyForAI = state.chatHistory.slice(-200).map(msg => ({
             speaker: msg.speaker,
             content: msg.content,
             role: msg.role
@@ -208,7 +208,8 @@ export async function callAIForDialogue(action, speech, isGreeting = false, isCo
                 userInputText = `【语言】"${speech}"`;
             }
         }
-        
+        const filteredSceneNPCs = state.currentSceneNPCs.filter(npc => npc.id !== state.currentDialogueNPC.id);
+        console.log('当前场景NPC列表（不含对话对象）:', filteredSceneNPCs); 
         const requestBody = {
             character_id: state.currentSession.characterId,
             chapter_index: window.currentChapterIndex || 1,
@@ -220,7 +221,7 @@ export async function callAIForDialogue(action, speech, isGreeting = false, isCo
             is_greeting: isGreeting,
             is_continue: isContinue,
             history: historyForAI,
-            scene_npcs: state.currentSceneNPCs
+            scene_npcs: filteredSceneNPCs
         };
         
         //console.log('发送给后端的数据:', JSON.stringify(requestBody, null, 2));

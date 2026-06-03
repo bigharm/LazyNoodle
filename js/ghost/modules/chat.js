@@ -51,13 +51,13 @@ async function sendEnvironmentMessage(action, speech) {
     
     if (action && speech) {
         displayContent = `（${action}）"${speech}"`;
-        storageContent = `${action}\n${speech}`;
+        storageContent = `（${action}）"${speech}"`;  // 改为与显示相同
     } else if (action) {
         displayContent = `（${action}）`;
-        storageContent = action;
+        storageContent = `（${action}）`;
     } else if (speech) {
         displayContent = `"${speech}"`;
-        storageContent = speech;
+        storageContent = `"${speech}"`;
     }
     
     // 添加用户消息
@@ -97,13 +97,13 @@ async function sendDialogueMessage(action, speech) {
     
     if (action && speech) {
         displayContent = `（${action}）"${speech}"`;
-        storageContent = `${action}\n${speech}`;
+        storageContent = `（${action}）"${speech}"`;
     } else if (action) {
         displayContent = `（${action}）`;
-        storageContent = action;
+        storageContent = `（${action}）`;
     } else if (speech) {
         displayContent = `"${speech}"`;
-        storageContent = speech;
+        storageContent = `"${speech}"`;
     }
     
     const userMsg = {
@@ -144,7 +144,9 @@ export async function callAIAndRespond(userInput) {
     const loadingIndicator = showLoadingIndicator();
     
     try {
-        const historyForAI = state.chatHistory.slice(-10).map(msg => ({
+        // 使用用户设置的上下文长度
+        const contextLength = state.contextLength || 200;
+        const historyForAI = state.chatHistory.slice(-contextLength).map(msg => ({
             speaker: msg.speaker,
             content: msg.content,
             role: msg.role
@@ -187,7 +189,7 @@ export async function callAIAndRespond(userInput) {
             continueDisabled: false
         };
         state.addChatMessage(assistantMsg);
-        
+
         await appendToConversationHistory(
             state.currentSession.characterId,
             '旁白',
